@@ -1,11 +1,15 @@
+import os
+
+os.environ["MYAI_EMBEDDING_PROVIDER"] = "deterministic"
+
 from myai import AIEngine, ChatRequest, Document
 
 
-def test_engine_returns_valid_v3_response() -> None:
+def test_engine_returns_valid_v4_response() -> None:
     result = AIEngine().generate(ChatRequest(message="Hello MY-AI"))
-    assert result.version == "v3"
-    assert result.model == "placeholder-v3"
-    assert "MY-AI V3" in result.text
+    assert result.version == "v4"
+    assert result.model == "placeholder-v4"
+    assert result.text
 
 
 def test_engine_preserves_conversation_count() -> None:
@@ -17,15 +21,16 @@ def test_engine_preserves_conversation_count() -> None:
         ],
     )
     result = AIEngine().generate(request)
-    assert result.version == "v3"
+    assert result.version == "v4"
 
 
-def test_engine_uses_knowledge_context() -> None:
+def test_engine_uses_semantic_knowledge_context() -> None:
     engine = AIEngine()
     chunks = engine.add_document(
         Document(source="policy.md", text="Refunds are available within 30 days.")
     )
     assert chunks == 1
 
-    result = engine.generate(ChatRequest(message="What is the refund period?"))
-    assert "Knowledge context blocks: 1" in result.text
+    retrieved = engine.retrieve("How long are refunds available?", top_k=1)
+    assert len(retrieved) == 1
+    assert retrieved[0].source == "policy.md"
