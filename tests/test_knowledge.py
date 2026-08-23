@@ -1,10 +1,8 @@
-from myai.knowledge import Document, InMemoryKnowledgeStore
-from myai.knowledge.chunker import chunk_document
+from myai.knowledge import Document, InMemoryKnowledgeStore, chunk_text
 
 
-def test_chunk_document_respects_overlap() -> None:
-    document = Document(source="demo.txt", text="one two three four five six")
-    chunks = chunk_document(document, chunk_size=4, overlap=1)
+def test_chunk_text_respects_overlap() -> None:
+    chunks = chunk_text("one two three four five six", chunk_size=4, overlap=1)
     assert chunks == ["one two three four", "four five six"]
 
 
