@@ -8,7 +8,7 @@ from typing import Protocol
 
 import numpy as np
 
-from .embeddings import EmbeddingModel
+from .embeddings import DeterministicEmbeddingModel, EmbeddingModel
 
 
 @dataclass(frozen=True)
@@ -51,6 +51,34 @@ def chunk_text(text: str, *, chunk_size: int, overlap: int) -> list[str]:
     return chunks
 
 
+class InMemoryKnowledgeStore:
+    """Small deterministic store kept for unit tests and offline development."""
+
+    def __init__(self) -> None:
+        self._items: list[tuple[str, int, str, dict[str, str]]] = []
+        self._embedder = DeterministicEmbeddingModel()
+
+    def add(self, document: Document, *, chunk_size: int = 800, overlap: int = 120) -> int:
+        chunks = chunk_text(document.text, chunk_size=chunk_size, overlap=overlap)
+        metadata = document.metadata or {}
+        self._items.extend(
+            (document.source, index, text, metadata) for index, text in enumerate(chunks)
+        )
+        return len(chunks)
+
+    def search(self, query: str, *, top_k: int) -> list[RetrievedChunk]:
+        if top_k <= 0 or not query.strip():
+            return []
+        query_vector = self._embedder.embed_query(query)
+        scored: list[RetrievedChunk] = []
+        for source, index, text, metadata in self._items:
+            vector = self._embedder.embed_query(text)
+            score = float(np.dot(query_vector, vector))
+            scored.append(RetrievedChunk(source, text, index, score, metadata))
+        scored.sort(key=lambda item: item.score, reverse=True)
+        return scored[:top_k]
+
+
 class SQLiteVectorStore:
     """Persistent cosine-similarity vector store backed by SQLite + NumPy."""
 
@@ -71,6 +99,7 @@ class SQLiteVectorStore:
                 )
                 """
             )
+            db.commit()
 
     def add(self, document: Document, *, chunk_size: int, overlap: int) -> int:
         chunks = chunk_text(document.text, chunk_size=chunk_size, overlap=overlap)
@@ -95,7 +124,7 @@ class SQLiteVectorStore:
         return len(chunks)
 
     def search(self, query: str, *, top_k: int) -> list[RetrievedChunk]:
-        if top_k <= 0:
+        if top_k <= 0 or not query.strip():
             return []
         query_vector = self.embedder.embed_query(query).astype(np.float32)
         rows: list[tuple[int, str, int, str, str, bytes]]
