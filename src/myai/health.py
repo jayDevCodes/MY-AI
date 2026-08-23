@@ -6,5 +6,5 @@ def healthcheck() -> dict[str, str]:
     return {
         "status": "ok",
         "app": settings.app_name,
-        "version": "v1",
+        "version": "v3",
     }
