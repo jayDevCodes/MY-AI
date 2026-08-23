@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     model_provider: str = "local"
     model_name: str = "placeholder-v1"
+    system_prompt: str = (
+        "You are MY-AI V1. Be accurate, explicit about uncertainty, and never invent sources."
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
