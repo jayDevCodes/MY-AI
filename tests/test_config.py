@@ -7,3 +7,4 @@ def test_default_settings() -> None:
     assert settings.environment == "development"
     assert settings.model_provider == "local"
     assert settings.model_name == "placeholder-v1"
+    assert "accurate" in settings.system_prompt
