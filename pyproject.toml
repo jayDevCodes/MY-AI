@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-ai"
-version = "0.1.0"
-description = "MY-AI V1: modular, tool-ready AI system"
+version = "0.2.0"
+description = "MY-AI V2: modular, provider-ready AI system"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "pydantic>=2.8,<3",
   "pydantic-settings>=2.4,<3",
+  "httpx>=0.27,<1",
 ]
 
 [project.optional-dependencies]
