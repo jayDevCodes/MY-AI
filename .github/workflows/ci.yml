@@ -1,4 +1,4 @@
-name: V1 CI
+name: V2 CI
 
 on:
   push:
@@ -28,8 +28,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install project + dev dependencies
-        run: python -m pip install -e ".[dev]"
+      - name: Install pinned project requirements
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Install project
+        run: python -m pip install -e .
 
       - name: Run tests
         run: pytest
@@ -57,8 +60,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install runtime requirements
+        run: python -m pip install -r requirements.txt
+
       - name: Install project
         run: python -m pip install -e .
 
       - name: Import smoke test
-        run: python -c "from myai.health import healthcheck; assert healthcheck()['status'] == 'ok'; print(healthcheck())"
+        run: python -c "from myai import AIEngine; result = AIEngine().generate(__import__('myai').ChatRequest(message='ci')); assert result.version == 'v2'; print(result.model)"
