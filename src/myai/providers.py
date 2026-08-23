@@ -18,10 +18,14 @@ class FallbackProvider:
             (message.content for message in reversed(messages) if message.role == "user"),
             "",
         )
+        knowledge_contexts = sum(
+            1 for message in messages if message.content.startswith("Retrieved knowledge context.")
+        )
         return (
-            "MY-AI V2 fallback is active. Configure MYAI_MODEL_PROVIDER=compatible "
+            "MY-AI V3 fallback is active. Configure MYAI_MODEL_PROVIDER=compatible "
             "and MYAI_MODEL_BASE_URL to connect a real model. "
-            f"Your message has {len(user_message.strip())} characters."
+            f"Your message has {len(user_message.strip())} characters. "
+            f"Knowledge context blocks: {knowledge_contexts}."
         )
 
 
