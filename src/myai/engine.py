@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from .config import get_settings
-from .knowledge import Document, InMemoryKnowledgeStore
+from .knowledge import Document, InMemoryKnowledgeStore, RetrievedChunk
 from .memory import ConversationMemory
 from .providers import get_provider
 from .schemas import ChatMessage, ChatRequest, ChatResponse
@@ -25,7 +25,7 @@ class AIEngine:
             overlap=self.settings.knowledge_chunk_overlap,
         )
 
-    def retrieve(self, query: str, *, top_k: int | None = None):
+    def retrieve(self, query: str, *, top_k: int | None = None) -> list[RetrievedChunk]:
         return self.knowledge.search(
             query,
             top_k=top_k if top_k is not None else self.settings.knowledge_top_k,
@@ -55,7 +55,7 @@ class AIEngine:
         self,
         message: str,
         history: Sequence[ChatMessage],
-        retrieved: Sequence[object],
+        retrieved: Sequence[RetrievedChunk],
     ) -> list[ChatMessage]:
         system = ChatMessage(role="system", content=self.settings.system_prompt)
         context_messages: list[ChatMessage] = []
@@ -64,10 +64,7 @@ class AIEngine:
                 "Retrieved knowledge context. Treat it as reference material and do not invent sources:"
             ]
             for item in retrieved:
-                context_lines.append(
-                    f"[{getattr(item, 'source', 'unknown')}#{getattr(item, 'chunk_index', 0)}] "
-                    f"{getattr(item, 'text', '')}"
-                )
+                context_lines.append(f"[{item.source}#{item.chunk_index}] {item.text}")
             context_messages.append(ChatMessage(role="system", content="\n".join(context_lines)))
 
         current = ChatMessage(role="user", content=message.strip())
