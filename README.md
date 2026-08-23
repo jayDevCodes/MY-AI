@@ -1,54 +1,26 @@
 # MY-AI
 
-MY-AI is being built as a modular AI system, upgraded through controlled versions.
+## V4
 
-## V2
+MY-AI V4 adds semantic retrieval with persistent local knowledge storage.
 
-V2 adds three foundations:
-
-- Pluggable model providers through an OpenAI-compatible HTTP adapter.
-- Bounded conversation memory.
-- Reproducible local and CI dependency installation.
-
-The default provider remains deterministic, so tests do not require model weights or API keys. Set `MYAI_MODEL_PROVIDER=compatible` and configure `MYAI_MODEL_BASE_URL` to connect a local or remote OpenAI-compatible inference server.
-
-## Local setup
-
-macOS / Linux:
+### Local setup
 
 ```bash
 ./scripts/setup.sh
 source .venv/bin/activate
+cp .env.example .env
 pytest
 ```
 
-Windows PowerShell:
+The runtime dependencies are listed in `requirements.txt`; development/CI dependencies are in `requirements-dev.txt`.
 
-```powershell
-./scripts/setup.ps1
-.\.venv\Scripts\Activate.ps1
-pytest
-```
+### Semantic embeddings
 
-Manual installation is also supported:
+V4 uses Sentence Transformers by default with `sentence-transformers/all-MiniLM-L6-v2`. The first local run downloads the embedding model into the normal model cache. The embedding device can be selected with `MYAI_EMBEDDING_DEVICE` (`cpu`, `cuda`, `mps`, or blank for automatic selection).
 
-```bash
-python -m venv .venv
-python -m pip install -r requirements-dev.txt
-python -m pip install -e .
-```
+### Knowledge database
 
-`requirements.txt` contains runtime dependencies. `requirements-dev.txt` includes runtime dependencies plus test/lint/type-check tooling. Future versions should update these files only when a new dependency is actually introduced.
+Knowledge is persisted in `data/knowledge.sqlite3` by default. The `data/` directory is intentionally ignored by Git because it is runtime state, not source code.
 
-## Architecture direction
-
-```text
-core model
-  -> provider adapter
-  -> conversation memory
-  -> retrieval / knowledge
-  -> tools
-  -> agents
-  -> multimodal
-  -> evaluation / verification
-```
+For CI and deterministic tests, set `MYAI_EMBEDDING_PROVIDER=deterministic` to avoid downloading model weights.
