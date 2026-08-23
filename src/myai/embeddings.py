@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from typing import Protocol
 
@@ -15,7 +16,7 @@ class EmbeddingModel(Protocol):
 
 
 class DeterministicEmbeddingModel:
-    """Small dependency-only-free fallback used by CI and offline tests."""
+    """Stable dependency-light embedding fallback used by CI and offline tests."""
 
     dimension = 64
 
@@ -23,7 +24,9 @@ class DeterministicEmbeddingModel:
     def _vector(text: str) -> np.ndarray:
         values = np.zeros(DeterministicEmbeddingModel.dimension, dtype=np.float32)
         for token in text.lower().split():
-            values[hash(token) % DeterministicEmbeddingModel.dimension] += 1.0
+            digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+            index = int.from_bytes(digest, "little") % DeterministicEmbeddingModel.dimension
+            values[index] += 1.0
         norm = np.linalg.norm(values)
         return values if norm == 0 else values / norm
 
@@ -45,29 +48,21 @@ class SentenceTransformerEmbeddingModel:
     def embed_documents(self, texts: Sequence[str]) -> np.ndarray:
         if hasattr(self.model, "encode_document"):
             vectors = self.model.encode_document(
-                list(texts),
-                normalize_embeddings=True,
-                convert_to_numpy=True,
+                list(texts), normalize_embeddings=True, convert_to_numpy=True
             )
         else:
             vectors = self.model.encode(
-                list(texts),
-                normalize_embeddings=True,
-                convert_to_numpy=True,
+                list(texts), normalize_embeddings=True, convert_to_numpy=True
             )
         return np.asarray(vectors, dtype=np.float32)
 
     def embed_query(self, text: str) -> np.ndarray:
         if hasattr(self.model, "encode_query"):
             vector = self.model.encode_query(
-                text,
-                normalize_embeddings=True,
-                convert_to_numpy=True,
+                text, normalize_embeddings=True, convert_to_numpy=True
             )
         else:
             vector = self.model.encode(
-                [text],
-                normalize_embeddings=True,
-                convert_to_numpy=True,
+                [text], normalize_embeddings=True, convert_to_numpy=True
             )[0]
         return np.asarray(vector, dtype=np.float32)
