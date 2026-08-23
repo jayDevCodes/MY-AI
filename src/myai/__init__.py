@@ -1,3 +1,6 @@
-"""MY-AI V1 core package."""
+"""MY-AI V1 public package."""
 
-__version__ = "0.1.0"
+from .engine import AIEngine
+from .schemas import ChatRequest, ChatResponse
+
+__all__ = ["AIEngine", "ChatRequest", "ChatResponse"]
