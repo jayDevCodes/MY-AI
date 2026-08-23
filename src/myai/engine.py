@@ -1,25 +1,30 @@
 from collections.abc import Sequence
 
 from .config import get_settings
+from .memory import ConversationMemory
+from .providers import get_provider
 from .schemas import ChatMessage, ChatRequest, ChatResponse
 
 
 class AIEngine:
-    """Provider-agnostic V1 orchestration boundary.
+    """V2 orchestration layer with bounded memory and pluggable inference."""
 
-    V1 deliberately uses a deterministic fallback so CI can exercise the
-    complete request path without downloading model weights or requiring keys.
-    A real local/remote model adapter can be plugged in behind this boundary.
-    """
-
-    version = "v1"
+    version = "v2"
 
     def __init__(self) -> None:
         self.settings = get_settings()
+        self.provider = get_provider()
+        self.memory = ConversationMemory()
 
     def generate(self, request: ChatRequest) -> ChatResponse:
         history = self._normalize_history(request.conversation)
-        text = self._fallback_response(request.message, history)
+        messages = self._build_messages(request.message, history)
+        text = self.provider.generate(messages)
+
+        self.memory.extend(history)
+        self.memory.add(ChatMessage(role="user", content=request.message.strip()))
+        self.memory.add(ChatMessage(role="assistant", content=text))
+
         return ChatResponse(
             text=text,
             model=self.settings.model_name,
@@ -30,10 +35,9 @@ class AIEngine:
     def _normalize_history(messages: Sequence[ChatMessage]) -> list[ChatMessage]:
         return [message for message in messages if message.content.strip()]
 
-    @staticmethod
-    def _fallback_response(message: str, history: Sequence[ChatMessage]) -> str:
-        context_note = f" Context messages: {len(history)}." if history else ""
-        return (
-            "MY-AI V1 received your request and is ready for a real model adapter. "
-            f"Your message has {len(message.strip())} characters.{context_note}"
-        )
+    def _build_messages(
+        self, message: str, history: Sequence[ChatMessage]
+    ) -> list[ChatMessage]:
+        system = ChatMessage(role="system", content=self.settings.system_prompt)
+        current = ChatMessage(role="user", content=message.strip())
+        return [system, *history, current]
