@@ -1,0 +1,38 @@
+from myai.engine import AIEngine
+from myai.memory import ConversationMemory
+from myai.schemas import ChatMessage, ChatRequest
+from myai.providers import FallbackProvider
+
+
+def test_fallback_provider_is_deterministic() -> None:
+    provider = FallbackProvider()
+    result = provider.generate([ChatMessage(role="user", content="hello")])
+    assert "MY-AI V2 fallback is active" in result
+    assert "5 characters" in result
+
+
+def test_memory_is_bounded() -> None:
+    memory = ConversationMemory(max_messages=2)
+    memory.add(ChatMessage(role="user", content="one"))
+    memory.add(ChatMessage(role="assistant", content="two"))
+    memory.add(ChatMessage(role="user", content="three"))
+
+    assert [item.content for item in memory.messages()] == ["two", "three"]
+
+
+def test_engine_returns_v2_response() -> None:
+    engine = AIEngine()
+    response = engine.generate(ChatRequest(message="hello"))
+
+    assert response.version == "v2"
+    assert response.model == "placeholder-v2"
+    assert response.text
+
+
+def test_engine_builds_system_prompt() -> None:
+    engine = AIEngine()
+    messages = engine._build_messages("hello", [])
+
+    assert messages[0].role == "system"
+    assert messages[-1].role == "user"
+    assert messages[-1].content == "hello"
