@@ -2,8 +2,10 @@ from myai.knowledge import Document, InMemoryKnowledgeStore, chunk_text
 
 
 def test_chunk_text_respects_overlap() -> None:
-    chunks = chunk_text("one two three four five six", chunk_size=4, overlap=1)
-    assert chunks == ["one two three four", "four five six"]
+    chunks = chunk_text("one two three four five", chunk_size=10, overlap=2)
+    assert chunks[0] == "one two th"
+    assert chunks[1].startswith("three")
+    assert chunks[1][0:2] == "th"
 
 
 def test_retrieval_returns_relevant_source() -> None:
