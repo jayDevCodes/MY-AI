@@ -1,22 +1,34 @@
 from collections.abc import Sequence
+from pathlib import Path
 
 from .config import get_settings
-from .knowledge import Document, InMemoryKnowledgeStore, RetrievedChunk
+from .embeddings import DeterministicEmbeddingModel, SentenceTransformerEmbeddingModel
+from .knowledge import Document, KnowledgeStore, RetrievedChunk, SQLiteVectorStore
 from .memory import ConversationMemory
 from .providers import get_provider
 from .schemas import ChatMessage, ChatRequest, ChatResponse
 
 
 class AIEngine:
-    """V3 orchestration layer with memory, inference and knowledge retrieval."""
+    """V4 orchestration layer with semantic retrieval and persistent knowledge."""
 
-    version = "v3"
+    version = "v4"
 
     def __init__(self) -> None:
         self.settings = get_settings()
         self.provider = get_provider()
         self.memory = ConversationMemory()
-        self.knowledge = InMemoryKnowledgeStore()
+        self.knowledge = self._build_knowledge_store()
+
+    def _build_knowledge_store(self) -> KnowledgeStore:
+        if self.settings.embedding_provider.lower() == "deterministic":
+            embedder = DeterministicEmbeddingModel()
+        else:
+            embedder = SentenceTransformerEmbeddingModel(
+                self.settings.embedding_model_name,
+                device=self.settings.embedding_device,
+            )
+        return SQLiteVectorStore(Path(self.settings.knowledge_db_path), embedder)
 
     def add_document(self, document: Document) -> int:
         return self.knowledge.add(
@@ -61,10 +73,12 @@ class AIEngine:
         context_messages: list[ChatMessage] = []
         if retrieved:
             context_lines = [
-                "Retrieved knowledge context. Treat it as reference material and do not invent sources:"
+                "Retrieved semantic knowledge context. Treat it as reference material and do not invent sources:"
             ]
             for item in retrieved:
-                context_lines.append(f"[{item.source}#{item.chunk_index}] {item.text}")
+                context_lines.append(
+                    f"[{item.source}#{item.chunk_index} score={item.score:.4f}] {item.text}"
+                )
             context_messages.append(ChatMessage(role="system", content="\n".join(context_lines)))
 
         current = ChatMessage(role="user", content=message.strip())
