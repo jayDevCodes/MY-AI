@@ -1,7 +1,7 @@
-"""MY-AI V3 public package."""
+"""MY-AI V4 public package."""
 
 from .engine import AIEngine
-from .knowledge import Document, InMemoryKnowledgeStore, RetrievedChunk
+from .knowledge import Document, RetrievedChunk, SQLiteVectorStore, chunk_text
 from .schemas import ChatRequest, ChatResponse
 
 __all__ = [
@@ -10,5 +10,6 @@ __all__ = [
     "ChatResponse",
     "Document",
     "RetrievedChunk",
-    "InMemoryKnowledgeStore",
+    "SQLiteVectorStore",
+    "chunk_text",
 ]
