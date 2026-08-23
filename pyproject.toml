@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "my-ai"
 version = "0.1.0"
-description = "Modular AI system foundation"
+description = "MY-AI V1: modular, tool-ready AI system"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
