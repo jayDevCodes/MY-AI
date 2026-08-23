@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-ai"
-version = "0.2.0"
-description = "MY-AI V2: modular, provider-ready AI system"
+version = "0.3.0"
+description = "MY-AI V3: provider-ready AI with knowledge retrieval"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
