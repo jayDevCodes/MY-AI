@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
     model_provider: str = "local"
-    model_name: str = "placeholder-v5"
+    model_name: str = "placeholder-v6"
     model_base_url: str = "http://localhost:11434"
     model_api_key: str = ""
     model_timeout_seconds: float = 60.0
@@ -20,10 +20,12 @@ class Settings(BaseSettings):
     embedding_provider: str = "sentence-transformers"
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_device: str | None = None
+    cognitive_verification: bool = True
+    cognitive_max_retries: int = 1
     system_prompt: str = (
-        "You are MY-AI V5. Be accurate, explicit about uncertainty, "
-        "use retrieved knowledge when supplied, cite its source metadata when relevant, "
-        "and never invent sources or claim tools were used when they were not."
+        "You are MY-AI V6. Be accurate and explicit about uncertainty. "
+        "Use retrieved knowledge when supplied. Never invent sources, tool usage, "
+        "or verification. Prefer evidence-backed answers and acknowledge uncertainty."
     )
 
     model_config = SettingsConfigDict(
