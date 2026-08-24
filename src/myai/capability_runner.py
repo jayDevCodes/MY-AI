@@ -13,6 +13,7 @@ from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord
 from .memory_lifecycle import MemoryLifecycleManager
 from .model_router import AdaptiveModelRouter, RoutingRequest
 from .repository_twin import CausalRepositoryTwin
+from .runtime_trace import RuntimeTraceGraph, TraceEvent
 
 
 @dataclass(frozen=True)
@@ -84,8 +85,18 @@ def run_architecture_benchmark(
     twin.rebuild(repository_root)
     slice_result = twin.impact_slice("AIEngine", limit=5)
     record("program-graph-localization", bool(slice_result.nodes) and bool(slice_result.source_context), f"nodes={len(slice_result.nodes)};edges={len(slice_result.edges)}")
+
+    trace = RuntimeTraceGraph()
+    trace.add(TraceEvent("benchmark-cause", "2026-01-01T00:00:00+00:00", "state", "src/myai/engine.py", 1, "AIEngine", "state changed"))
+    trace.add(TraceEvent("benchmark-error", "2026-01-01T00:00:01+00:00", "exception", "src/myai/engine.py", 2, "AIEngine", "TypeError: benchmark failure", parent_id="benchmark-cause"))
+    trace.link("benchmark-cause", "benchmark-error", "caused")
+    neighborhood = trace.neighborhood("benchmark-error")
     affected = twin.affected_files("src/myai/engine.py")
-    record("causal-trace-diagnosis", bool(affected), f"affected_files={len(affected)}")
+    record(
+        "causal-trace-diagnosis",
+        bool(neighborhood) and any(event.kind == "exception" for event in neighborhood) and bool(affected),
+        f"trace_events={len(neighborhood)};affected_files={len(affected)}",
+    )
 
     state.observe("observation-a")
     for index_value in range(20):
