@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from .capability_benchmark import CapabilityBenchmark
-from .capability_ledger import CapabilityLedger, CapabilitySnapshot
-from .evolution import EvolutionMemory, StrategyScore
+from hashlib import sha256
+from time import perf_counter
+
+from .capability_benchmark import CapabilityBenchmark, CapabilitySnapshot
+from .capability_ledger import CapabilityLedger
+from .evolution import EvolutionMemory, EvolutionRecord, StrategyScore
 from .graph_v9 import ProgramGraph, ProgramSlice
 from .runtime_trace import RuntimeTraceGraph
 from .schemas import ChatMessage
@@ -41,6 +44,27 @@ class V9AIEngine(V8AIEngine):
 
     def best_strategy(self) -> str | None:
         return self.evolution_memory.best_strategy()
+
+    def record_generation_experience(
+        self,
+        *,
+        task: str,
+        strategy: str,
+        success: bool,
+        score: float,
+        latency_ms: float,
+    ) -> None:
+        task_id = sha256(task.strip().encode("utf-8")).hexdigest()[:16]
+        self.evolution_memory.append(
+            EvolutionRecord(
+                task_id=task_id,
+                strategy=strategy,
+                success=success,
+                score=max(0.0, min(1.0, score)),
+                latency_ms=max(0.0, latency_ms),
+                lessons=("verified" if success else "verification-failed",),
+            )
+        )
 
     def repair_context_v9(self, traceback_text: str) -> tuple[ChatMessage, ...]:
         diagnosis = self.diagnose_failure(traceback_text)
@@ -95,3 +119,7 @@ class V9AIEngine(V8AIEngine):
             notes=notes,
         )
         return self.capability_ledger.record(snapshot)
+
+
+def _measure_elapsed_ms(start: float) -> float:
+    return (perf_counter() - start) * 1000.0
