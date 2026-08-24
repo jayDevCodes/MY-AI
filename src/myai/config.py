@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     repair_memory_path: str = "data/repair_memory.jsonl"
     runtime_trace_path: str = "data/runtime_trace.jsonl"
     evolution_memory_path: str = "data/evolution_memory.jsonl"
+    capability_ledger_path: str = "data/capability_ledger.json"
     evolution_min_promotion_delta: float = 0.05
     system_prompt: str = (
         "You are MY-AI V9.0. Operate as an evidence-first cognitive mesh. "
