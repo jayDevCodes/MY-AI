@@ -45,7 +45,9 @@ def chunk_text(text: str, *, chunk_size: int, overlap: int) -> list[str]:
     chunks: list[str] = []
     start = 0
     step = chunk_size - overlap
-    while start < len(cleaned):
+    # Do not emit a final fragment made only from the overlap of the preceding
+    # chunk. It adds duplicate context without contributing new content.
+    while start == 0 or start + overlap < len(cleaned):
         chunks.append(cleaned[start : start + chunk_size])
         start += step
     return chunks
@@ -109,7 +111,10 @@ class SQLiteVectorStore:
         metadata = json.dumps(document.metadata or {}, sort_keys=True)
         with sqlite3.connect(self.path) as db:
             db.executemany(
-                "INSERT INTO chunks(source, chunk_index, text, metadata, embedding) VALUES (?, ?, ?, ?, ?)",
+                (
+                    "INSERT INTO chunks(source, chunk_index, text, metadata, embedding) "
+                    "VALUES (?, ?, ?, ?, ?)"
+                ),
                 [
                     (
                         document.source,
@@ -138,8 +143,10 @@ class SQLiteVectorStore:
         for _, source, index, text, metadata_json, raw_embedding in rows:
             vector = np.frombuffer(raw_embedding, dtype=np.float32)
             vector_norm = float(np.linalg.norm(vector))
-            score = 0.0 if query_norm == 0 or vector_norm == 0 else float(
-                np.dot(query_vector, vector) / (query_norm * vector_norm)
+            score = (
+                0.0
+                if query_norm == 0 or vector_norm == 0
+                else float(np.dot(query_vector, vector) / (query_norm * vector_norm))
             )
             scored.append(
                 RetrievedChunk(

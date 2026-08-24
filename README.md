@@ -1,8 +1,12 @@
 # MY-AI
 
-## V4
+## V5
 
-MY-AI V4 adds semantic retrieval with persistent local knowledge storage.
+MY-AI V5 provides semantic retrieval with persistent local knowledge storage.
+
+V5 fixes a V4 packaging defect: the obsolete `myai.knowledge` package shadowed
+the V4 `myai.knowledge` module, which prevented the semantic-store APIs from
+being imported. The public knowledge API now resolves to one implementation.
 
 ### Local setup
 

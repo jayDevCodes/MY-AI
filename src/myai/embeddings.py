@@ -58,11 +58,7 @@ class SentenceTransformerEmbeddingModel:
 
     def embed_query(self, text: str) -> np.ndarray:
         if hasattr(self.model, "encode_query"):
-            vector = self.model.encode_query(
-                text, normalize_embeddings=True, convert_to_numpy=True
-            )
+            vector = self.model.encode_query(text, normalize_embeddings=True, convert_to_numpy=True)
         else:
-            vector = self.model.encode(
-                [text], normalize_embeddings=True, convert_to_numpy=True
-            )[0]
+            vector = self.model.encode([text], normalize_embeddings=True, convert_to_numpy=True)[0]
         return np.asarray(vector, dtype=np.float32)
