@@ -1,15 +1,15 @@
 {
-  "schema_version": 1,
-  "model_version": "v9.0",
-  "purpose": "Canonical baseline for the next MY-AI upgrade. Read this before changing architecture.",
+  "schema_version": 2,
+  "model_version": "v10-capability-evidence",
+  "purpose": "Canonical architecture and measurement baseline for the next MY-AI upgrade. Read this before changing architecture.",
   "architecture": {
-    "core": "recursive multi-model cognitive mesh",
+    "core": "recursive multi-model cognitive mesh with bounded cognitive context and persistent evidence-gated memory",
     "model_routing": ["fast", "balanced", "frontier"],
     "repository_representation": ["persistent symbol graph", "repository twin", "program graph", "call edges", "data-flow references", "control-flow edges"],
     "runtime_evidence": ["persistent trace events", "causal links", "failure neighborhoods"],
-    "memory": ["semantic knowledge", "repair memory", "evolution memory", "capability ledger"],
+    "memory": ["semantic knowledge", "repair memory", "evolution memory", "capability ledger", "bounded cognitive context", "evidence-gated lifecycle"],
     "verification": ["specialist workers", "frontier judge", "targeted validation", "promotion gates"],
-    "self_improvement": ["strategy scoring", "baseline comparison", "capability deltas", "regression detection"]
+    "self_improvement": ["strategy scoring", "verified strategy feedback", "baseline comparison", "capability deltas", "regression detection", "executable architecture benchmarks"]
   },
   "capability_dimensions": {
     "reasoning": {"status": "implemented_not_fully_benchmarked", "score": null},
@@ -29,6 +29,10 @@
     "V9 runtime trace persistence test covers event retention and causal links",
     "V9 evolution benchmark tests cover baseline-vs-candidate promotion",
     "V9 capability ledger roundtrip/delta test added",
+    "V10 bounded cognitive context and task-aware memory are merged",
+    "V10 evidence-gated memory lifecycle is merged",
+    "V10 verified strategy feedback loop is merged",
+    "deterministic architecture benchmark runner added for repeatable routing/planning/agent-graph evidence",
     "incremental code-index freshness and targeted source context are retained from V8"
   ],
   "benchmark_protocol": {
@@ -42,21 +46,25 @@
       "latency",
       "tokens/cost",
       "unnecessary context/code-read volume",
-      "memory transfer across episodes"
+      "memory transfer across episodes",
+      "persisted evidence for every numeric claim"
     ],
+    "current_executable_suite": ["frontier-routing", "recursive-agent-graph"],
     "external_reference_directions": ["STATE-Bench", "EvoMemBench", "EvoAgentBench", "PAST-Bench"]
   },
   "known_limits": [
     "No independent frontier-model quality claim has been established from this repository alone.",
     "Fresh GitHub Actions execution is not guaranteed to be visible through the current integration at every commit.",
     "Program/data/control-flow coverage is strongest for Python and should be extended to other languages before broad repo claims.",
+    "Capability numeric scores remain unmeasured until the broader benchmark suite is executed.",
     "Self-evolution changes are evidence-gated; automatic model-weight training is not implemented."
   ],
   "next_upgrade_targets": [
-    "language-agnostic program/data/control-flow graph",
+    "expand executable benchmark coverage to memory, verification, repository understanding and efficiency",
+    "capability-aware compute allocation using ledger + evolution evidence + adaptive routing",
     "real runtime instrumentation and automatic trace capture",
     "sandbox patch execution with automatic rollback",
-    "longitudinal benchmark runner producing measured capability scores",
+    "language-agnostic program/data/control-flow graph",
     "ability-transfer memory and curriculum generation",
     "model-vs-model and architecture-vs-architecture comparison harness"
   ]
