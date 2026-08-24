@@ -14,6 +14,7 @@ from .embeddings import (
 )
 from .knowledge import Document, KnowledgeStore, RetrievedChunk, SQLiteVectorStore
 from .memory import ConversationMemory
+from .memory_store import CognitiveMemoryStore
 from .model_router import AdaptiveModelRouter, RoutingRequest, RoutingDecision
 from .provider_pool import TieredModelPool
 from .providers import get_provider
@@ -31,6 +32,8 @@ class AIEngine:
         self.memory = ConversationMemory()
         self.cognitive = CognitiveCore()
         self.cognitive_state = CognitiveState()
+        self.memory_store = CognitiveMemoryStore(self.settings.memory_store_path)
+        self.memory_store.hydrate(self.cognitive_state, limit=self.settings.memory_load_limit)
         self.router = AdaptiveModelRouter()
         self.model_pool = TieredModelPool(self.settings)
         self.agent_runtime = MultiModelAgentRuntime(
@@ -224,6 +227,7 @@ class AIEngine:
                 tags=(plan.kind, routing.tier),
             )
         )
+        self.memory_store.persist_state(self.cognitive_state)
         self.memory.extend(history)
         self.memory.add(ChatMessage(role="user", content=request.message.strip()))
         self.memory.add(ChatMessage(role="assistant", content=text))

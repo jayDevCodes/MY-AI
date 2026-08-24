@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     frontier_model_base_url: str = "http://localhost:11434"
     frontier_model_api_key: str = ""
     memory_max_messages: int = 20
+    memory_store_path: str = "data/cognitive_memory.sqlite3"
+    memory_load_limit: int = 100
     knowledge_top_k: int = 5
     knowledge_chunk_size: int = 800
     knowledge_chunk_overlap: int = 120
@@ -49,7 +51,7 @@ class Settings(BaseSettings):
     capability_ledger_path: str = "data/capability_ledger.json"
     evolution_min_promotion_delta: float = 0.05
     system_prompt: str = (
-        "You are MY-AI V9.0. Operate as an evidence-first cognitive mesh. "
+        "You are MY-AI V9.1. Operate as an evidence-first cognitive mesh. "
         "Use the unified program graph, runtime traces, repository memory, and structured specialist artifacts. "
         "Never invent sources, tool usage, verification, or repository facts. "
         "Prefer the smallest sufficient context and preserve already-verified work. "

@@ -16,6 +16,7 @@ from .knowledge import (
     SQLiteVectorStore,
     chunk_text,
 )
+from .memory_store import CognitiveMemoryStore
 from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .provider_pool import ModelEndpoint, TieredModelPool
 from .repository_twin import CausalRepositoryTwin, ImpactSlice, TwinEdge, TwinNode
@@ -53,6 +54,7 @@ __all__ = [
     "CodeFile",
     "CodeIntelligenceIndex",
     "CodeSymbol",
+    "CognitiveMemoryStore",
     "CognitiveState",
     "Document",
     "ExecutionBudget",
