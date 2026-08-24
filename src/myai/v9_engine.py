@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .capability_benchmark import CapabilityBenchmark
+from .capability_ledger import CapabilityLedger, CapabilitySnapshot
 from .evolution import EvolutionMemory, StrategyScore
 from .graph_v9 import ProgramGraph, ProgramSlice
 from .runtime_trace import RuntimeTraceGraph
@@ -17,6 +19,8 @@ class V9AIEngine(V8AIEngine):
         self.program_graph = ProgramGraph(self.code_index)
         self.runtime_traces = RuntimeTraceGraph.load(self.settings.runtime_trace_path)
         self.evolution_memory = EvolutionMemory(self.settings.evolution_memory_path)
+        self.capability_ledger = CapabilityLedger(self.settings.capability_ledger_path)
+        self.capability_benchmark = CapabilityBenchmark()
         self._refresh_program_graph()
 
     def _refresh_program_graph(self) -> None:
@@ -75,3 +79,20 @@ class V9AIEngine(V8AIEngine):
                 ),
             ),
         )
+
+    def capability_baseline(self) -> dict[str, object]:
+        return self.capability_ledger.baseline()
+
+    def record_capability_snapshot(
+        self,
+        commit: str,
+        results: dict[str, tuple[float, tuple[str, ...]]],
+        notes: tuple[str, ...] = (),
+    ) -> CapabilitySnapshot:
+        snapshot = self.capability_benchmark.snapshot(
+            version=self.version,
+            commit=commit,
+            results=results,
+            notes=notes,
+        )
+        return self.capability_ledger.record(snapshot)
