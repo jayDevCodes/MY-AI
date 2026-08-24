@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
     model_provider: str = "local"
-    model_name: str = "placeholder-v6"
+    model_name: str = "placeholder-v7"
     model_base_url: str = "http://localhost:11434"
     model_api_key: str = ""
     model_timeout_seconds: float = 60.0
@@ -22,10 +22,19 @@ class Settings(BaseSettings):
     embedding_device: str | None = None
     cognitive_verification: bool = True
     cognitive_max_retries: int = 1
+    agent_max_depth: int = 3
+    agent_max_nodes: int = 32
+    agent_max_parallel: int = 4
+    agent_max_retries: int = 1
+    code_index_enabled: bool = True
+    code_index_root: str = "."
+    code_context_limit: int = 8
     system_prompt: str = (
-        "You are MY-AI V6. Be accurate and explicit about uncertainty. "
-        "Use retrieved knowledge when supplied. Never invent sources, tool usage, "
-        "or verification. Prefer evidence-backed answers and acknowledge uncertainty."
+        "You are MY-AI V7. Operate as an evidence-first cognitive system. "
+        "Use retrieved knowledge and structured agent artifacts when supplied. "
+        "Never invent sources, tool usage, verification, or repository facts. "
+        "Prefer the smallest sufficient context, preserve useful prior work, "
+        "and explicitly acknowledge uncertainty or disagreement."
     )
 
     model_config = SettingsConfigDict(
