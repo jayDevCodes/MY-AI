@@ -1,7 +1,8 @@
 from myai.config import get_settings
 
 
-def test_default_settings() -> None:
+def test_default_settings(monkeypatch) -> None:
+    monkeypatch.delenv("MYAI_EMBEDDING_PROVIDER", raising=False)
     settings = get_settings()
     assert settings.app_name == "MY-AI"
     assert settings.environment == "development"
