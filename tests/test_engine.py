@@ -8,10 +8,10 @@ def deterministic_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MYAI_EMBEDDING_PROVIDER", "deterministic")
 
 
-def test_engine_returns_valid_v71_response() -> None:
+def test_engine_returns_valid_v9_response() -> None:
     result = AIEngine().generate(ChatRequest(message="Hello MY-AI"))
-    assert result.version == "v7.1"
-    assert result.model == "placeholder-v7"
+    assert result.version == "v9.0"
+    assert result.model == "placeholder-v9"
     assert result.text
 
 
@@ -24,7 +24,7 @@ def test_engine_preserves_conversation_count() -> None:
         ],
     )
     result = AIEngine().generate(request)
-    assert result.version == "v7.1"
+    assert result.version == "v9.0"
 
 
 def test_engine_uses_semantic_knowledge_context() -> None:
