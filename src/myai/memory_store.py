@@ -144,8 +144,7 @@ class CognitiveMemoryStore:
                 FROM beliefs
                 ORDER BY confidence DESC, id DESC
                 LIMIT ?
-                """
-                ,
+                """,
                 (limit,),
             ).fetchall()
         return tuple(
