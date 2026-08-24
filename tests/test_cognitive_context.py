@@ -34,3 +34,14 @@ def test_relevant_memories_can_rank_by_query_overlap() -> None:
     memories = state.relevant_memories(query="database timeout", limit=1)
 
     assert memories[0].content == target.content
+
+
+def test_context_preserves_proven_strategy_hints_as_historical_signals() -> None:
+    state = CognitiveState(goal="debug service")
+    context = build_cognitive_context(
+        state,
+        strategy_hints=("route:balanced:coding (success=1.00, score=0.93)",),
+    )
+
+    assert context.strategy_hints == ("route:balanced:coding (success=1.00, score=0.93)",)
+    assert "PROVEN STRATEGIES" in context.render()
