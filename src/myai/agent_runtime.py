@@ -4,7 +4,7 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
+from .agent_graph import ExecutionBudget, JudgeVerdict, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .model_router import AdaptiveModelRouter, RoutingRequest
 from .provider_pool import ModelTier, TieredModelPool
 from .schemas import ChatMessage
@@ -111,7 +111,7 @@ class MultiModelAgentRuntime:
         node: TaskNode,
         artifact: WorkArtifact,
         children: Sequence[WorkArtifact],
-    ):
+    ) -> JudgeVerdict:
         tier: ModelTier = "frontier"
         self._tiers[f"{node.id}:judge"] = tier
         child_summary = "\n".join(
@@ -123,7 +123,7 @@ class MultiModelAgentRuntime:
                 content=(
                     "You are an independent judge. Evaluate whether the worker output is "
                     "consistent, useful, evidence-aware and complete. Return JSON only: "
-                    '{"passed":true|false,"confidence":0.0-1.0,"feedback":"..."}'"
+                    '{"passed":true|false,"confidence":0.0-1.0,"feedback":"..."}'
                 ),
             ),
             ChatMessage(
@@ -137,15 +137,11 @@ class MultiModelAgentRuntime:
         raw = self.pool.generate(tier, messages)
         try:
             data = json.loads(raw)
-            passed = bool(data.get("passed"))
-            confidence = float(data.get("confidence", 0.0))
-            feedback = str(data.get("feedback", ""))
-            from .agent_graph import JudgeVerdict
-
-            return JudgeVerdict(passed, max(0.0, min(1.0, confidence)), feedback)
+            return JudgeVerdict(
+                bool(data.get("passed")),
+                max(0.0, min(1.0, float(data.get("confidence", 0.0)))),
+                str(data.get("feedback", "")),
+            )
         except (TypeError, ValueError, json.JSONDecodeError):
-            from .agent_graph import JudgeVerdict
-
-            # Deterministic fallback keeps the runtime usable with local/non-JSON models.
             passed = bool(raw.strip()) and "error" not in raw.casefold()
             return JudgeVerdict(passed, 0.5 if passed else 0.0, "Judge output was not valid JSON.")
