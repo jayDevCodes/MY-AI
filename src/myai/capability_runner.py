@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Callable
 
+from .agent_graph import ExecutionBudget, JudgeVerdict, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .capability_benchmark import BenchmarkCase, CapabilityBenchmark
 from .cognitive import CognitiveCore
 from .model_router import AdaptiveModelRouter, RoutingRequest
-from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact, JudgeVerdict
 
 
 @dataclass(frozen=True)
@@ -30,11 +29,14 @@ def run_architecture_benchmark(
     results: dict[str, tuple[float, tuple[str, ...]]] = {}
 
     def record(case_name: str, passed: bool, evidence: str) -> None:
-        results[case_name] = (1.0 if passed else 0.0, (evidence,))
+        existing = results.get(case_name)
+        score = 1.0 if passed else 0.0
+        if existing is None:
+            results[case_name] = (score, (evidence,))
+        else:
+            results[case_name] = ((existing[0] + score) / 2.0, existing[1] + (evidence,))
 
-    decision = router.choose(
-        RoutingRequest(task_kind="research", complexity=0.9, uncertainty=0.9)
-    )
+    decision = router.choose(RoutingRequest(task_kind="research", complexity=0.9, uncertainty=0.9))
     record(
         "frontier-routing",
         decision.tier == "frontier" and decision.allow_parallel,
@@ -48,12 +50,14 @@ def run_architecture_benchmark(
         f"plan_kind={plan.kind};steps={len(plan.steps)}",
     )
 
-    graph = RecursiveAgentGraph(ExecutionBudget(max_depth=2, max_nodes=4, max_parallel=2, max_retries=1))
+    graph = RecursiveAgentGraph(
+        ExecutionBudget(max_depth=2, max_nodes=4, max_parallel=2, max_retries=1)
+    )
 
     def decompose(node: TaskNode, budget: ExecutionBudget):
-        if node.depth > 0:
-            return ()
-        return (TaskNode("child", "verify architecture fact", "research", 1, node.id),)
+        return () if node.depth > 0 else (
+            TaskNode("child", "verify architecture fact", "research", 1, node.id),
+        )
 
     def worker(node: TaskNode, children):
         return WorkArtifact(node.id, node.role, "verified", 0.9)
@@ -73,8 +77,10 @@ def run_architecture_benchmark(
         f"confidence={artifact.confidence:.2f}",
     )
 
-    elapsed_ms = (perf_counter() - started) * 1000.0
-    return BenchmarkRun(results=results, elapsed_ms=elapsed_ms)
+    return BenchmarkRun(
+        results=results,
+        elapsed_ms=(perf_counter() - started) * 1000.0,
+    )
 
 
 def benchmark_cases(benchmark: CapabilityBenchmark | None = None) -> tuple[BenchmarkCase, ...]:
