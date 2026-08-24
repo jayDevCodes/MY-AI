@@ -12,6 +12,7 @@ class CognitiveContext:
     goal: str | None
     subgoals: tuple[str, ...]
     strategy: str | None
+    strategy_hints: tuple[str, ...]
     uncertainty: float
     observations: tuple[str, ...]
     beliefs: tuple[str, ...]
@@ -24,6 +25,7 @@ class CognitiveContext:
             f"GOAL: {self.goal or '(none)'}",
             f"SUBGOALS: {', '.join(self.subgoals) or '(none)'}",
             f"STRATEGY: {self.strategy or '(none)'}",
+            f"PROVEN STRATEGIES: {' | '.join(self.strategy_hints) or '(none)'}",
             f"UNCERTAINTY: {self.uncertainty:.2f}",
             f"OBSERVATIONS: {' | '.join(self.observations) or '(none)'}",
             f"BELIEFS: {' | '.join(self.beliefs) or '(none)'}",
@@ -46,6 +48,7 @@ def build_cognitive_context(
     observation_limit: int = 6,
     capability_limit: int = 8,
     world_limit: int = 8,
+    strategy_hints: tuple[str, ...] = (),
 ) -> CognitiveContext:
     memories: list[MemoryItem] = []
     selected_kinds = memory_kinds or tuple(MemoryKind)
@@ -69,6 +72,7 @@ def build_cognitive_context(
         goal=state.goal,
         subgoals=tuple(state.subgoals),
         strategy=state.active_strategy,
+        strategy_hints=strategy_hints[:6],
         uncertainty=state.uncertainty,
         observations=observations,
         beliefs=beliefs,
