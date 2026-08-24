@@ -24,12 +24,14 @@ class CodeFile:
 
 
 class CodeIntelligenceIndex:
-    """Persistent lightweight AST/symbol graph for narrow code-context retrieval."""
+    """Persistent AST/symbol graph with incremental freshness-aware invalidation."""
 
-    snapshot_version = 1
+    snapshot_version = 4
 
     def __init__(self) -> None:
         self.files: dict[str, CodeFile] = {}
+        self._snapshot_signatures: dict[str, tuple[int, int] | None] = {}
+        self._snapshot_root: str | None = None
 
     def index_file(self, path: str | Path) -> CodeFile:
         file_path = Path(path)
@@ -75,18 +77,92 @@ class CodeIntelligenceIndex:
         self.files[str(file_path)] = code_file
         return code_file
 
-    def index_tree(self, root: str | Path) -> int:
+    def _candidate_paths(self, root: str | Path) -> set[str]:
         root_path = Path(root)
+        return {
+            str(path)
+            for path in root_path.rglob("*.py")
+            if not any(part in {".git", ".venv", "venv", "__pycache__"} for part in path.parts)
+        }
+
+    @staticmethod
+    def _stat_signature(path: str | Path) -> tuple[int, int] | None:
+        try:
+            stat = Path(path).stat()
+        except OSError:
+            return None
+        return stat.st_mtime_ns, stat.st_size
+
+    @staticmethod
+    def _module_candidates(module: str) -> set[str]:
+        parts = module.split(".")
+        return {"/".join(parts) + ".py", "/".join(parts) + "/__init__.py"}
+
+    def _is_dependent_on(self, file_path: str, changed_path: str) -> bool:
+        changed = Path(changed_path).resolve()
+        source = Path(file_path).resolve()
+        code_file = self.files.get(file_path)
+        if code_file is None:
+            return False
+        root = Path(self._snapshot_root or ".").resolve()
+        for module in code_file.imports:
+            for candidate in self._module_candidates(module):
+                if (root / candidate).resolve() == changed:
+                    return True
+        return source == changed
+
+    def index_tree(self, root: str | Path) -> int:
         count = 0
-        for path in root_path.rglob("*.py"):
-            if any(part in {".git", ".venv", "venv", "__pycache__"} for part in path.parts):
-                continue
+        for path in self._candidate_paths(root):
             try:
                 self.index_file(path)
                 count += 1
             except (OSError, SyntaxError, UnicodeDecodeError):
                 continue
         return count
+
+    def refresh_if_stale(self, root: str | Path) -> bool:
+        """Incrementally reindex changed files and their direct import dependents."""
+        root_path = Path(root)
+        current_paths = self._candidate_paths(root_path)
+        current_signatures = {path: self._stat_signature(path) for path in current_paths}
+        stale_paths = {
+            path
+            for path in current_paths
+            if self._snapshot_signatures.get(path) != current_signatures[path]
+        }
+        removed_paths = set(self._snapshot_signatures) - current_paths
+        stale_paths.update(removed_paths)
+
+        if self._snapshot_root != str(root_path):
+            self.files.clear()
+            self.index_tree(root_path)
+            self._snapshot_signatures = current_signatures
+            self._snapshot_root = str(root_path)
+            return True
+
+        if not stale_paths:
+            return False
+
+        changed_existing = {path for path in stale_paths if path in current_paths}
+        affected = set(changed_existing)
+        for path in current_paths:
+            if any(self._is_dependent_on(path, changed) for changed in changed_existing):
+                affected.add(path)
+
+        for path in removed_paths:
+            self.files.pop(path, None)
+
+        for path in affected:
+            if path in current_paths:
+                try:
+                    self.index_file(path)
+                except (OSError, SyntaxError, UnicodeDecodeError):
+                    self.files.pop(path, None)
+
+        self._snapshot_signatures = current_signatures
+        self._snapshot_root = str(root_path)
+        return True
 
     def search(self, query: str, limit: int = 20) -> tuple[CodeSymbol, ...]:
         terms = [term.casefold() for term in query.split() if term.strip()]
@@ -136,11 +212,18 @@ class CodeIntelligenceIndex:
             )
         return tuple(contexts)
 
-    def save_snapshot(self, path: str | Path) -> None:
+    def save_snapshot(self, path: str | Path, root: str | Path = ".") -> None:
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
+        signatures = {
+            file_path: self._stat_signature(file_path)
+            for file_path in self.files
+            if self._stat_signature(file_path) is not None
+        }
         payload = {
             "version": self.snapshot_version,
+            "root": str(Path(root)),
+            "signatures": signatures,
             "files": [
                 {
                     "path": code_file.path,
@@ -161,8 +244,10 @@ class CodeIntelligenceIndex:
             ],
         }
         target.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        self._snapshot_signatures = signatures
+        self._snapshot_root = str(Path(root))
 
-    def load_snapshot(self, path: str | Path) -> bool:
+    def load_snapshot(self, path: str | Path, root: str | Path = ".") -> bool:
         target = Path(path)
         if not target.exists():
             return False
@@ -170,6 +255,20 @@ class CodeIntelligenceIndex:
             payload = json.loads(target.read_text(encoding="utf-8"))
             if payload.get("version") != self.snapshot_version:
                 return False
+            expected_root = str(Path(root))
+            if str(payload.get("root", expected_root)) != expected_root:
+                return False
+            signatures = {
+                str(key): tuple(value) if value is not None else None
+                for key, value in payload.get("signatures", {}).items()
+            }
+            current_paths = self._candidate_paths(root)
+            if current_paths != set(signatures):
+                return False
+            for file_path, signature in signatures.items():
+                if self._stat_signature(file_path) != signature:
+                    return False
+
             files: dict[str, CodeFile] = {}
             for item in payload.get("files", []):
                 symbols = tuple(
@@ -190,6 +289,8 @@ class CodeIntelligenceIndex:
                 )
                 files[code_file.path] = code_file
             self.files = files
+            self._snapshot_signatures = signatures
+            self._snapshot_root = expected_root
             return True
         except (OSError, ValueError, TypeError, KeyError):
             self.files.clear()

@@ -1,9 +1,9 @@
-"""MY-AI V7.1 public package."""
+"""MY-AI V8 public package."""
 
 from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
-from .engine import AIEngine
+from .engine import AIEngine as LegacyAIEngine
 from .knowledge import (
     Document,
     InMemoryKnowledgeStore,
@@ -13,10 +13,25 @@ from .knowledge import (
 )
 from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .provider_pool import ModelEndpoint, TieredModelPool
+from .repository_twin import CausalRepositoryTwin, ImpactSlice, TwinEdge, TwinNode
 from .schemas import ChatRequest, ChatResponse
+from .self_healing import (
+    CausalDiagnosis,
+    CausalErrorEngine,
+    FailureEvent,
+    FailureFrame,
+    RepairMemory,
+    RepairMemoryRecord,
+)
+from .v8_engine import V8AIEngine
+
+# V8 becomes the default public engine while the legacy V7.1 engine remains importable.
+AIEngine = V8AIEngine
 
 __all__ = [
     "AIEngine",
+    "LegacyAIEngine",
+    "V8AIEngine",
     "AdaptiveModelRouter",
     "AgentRuntimeResult",
     "ChatRequest",
@@ -37,5 +52,15 @@ __all__ = [
     "TaskNode",
     "TieredModelPool",
     "WorkArtifact",
+    "CausalRepositoryTwin",
+    "ImpactSlice",
+    "TwinEdge",
+    "TwinNode",
+    "CausalDiagnosis",
+    "CausalErrorEngine",
+    "FailureEvent",
+    "FailureFrame",
+    "RepairMemory",
+    "RepairMemoryRecord",
     "chunk_text",
 ]

@@ -1,66 +1,76 @@
 # MY-AI
 
-## V7.1 — Recursive Multi-Model Agent System
+## V8 — Causal Repository Twin + Self-Healing Agents
 
-MY-AI V7.1 keeps the V5 semantic retrieval/persistent-memory foundation and V6 cognitive verification, then makes the V7 architecture executable across multiple model tiers.
+MY-AI V8 keeps the V7.1 recursive multi-model architecture and adds an evidence-first repository intelligence loop for targeted debugging and repair.
 
-### V7.1 architecture
-
-```text
-request
-  -> cognitive classification
-  -> adaptive tier selection
-  -> recursive task graph
-       -> specialist workers on fast/balanced/frontier models
-       -> compact WorkArtifacts
-       -> independent frontier judge
-       -> retry only failed branch
-  -> final verification
-  -> persistent memory
-```
-
-The runtime supports three separately configurable model tiers. Each tier can point to its own OpenAI-compatible endpoint/model, so a planner, specialist, critic, and judge can run on different models instead of pretending that one model did every job.
-
-### Context engineering
-
-Agents exchange structured artifacts instead of replaying their full conversation or repository context:
+### V8 architecture
 
 ```text
-WorkArtifact
-  task_id
-  role
-  output
-  confidence
-  findings
-  evidence
-  open_questions
-  children
+runtime failure
+  -> traceback + stack frames
+  -> causal repository twin
+       -> repository structure
+       -> import/dependency impact
+       -> symbol/source slice
+       -> verification history
+       -> previous successful fixes
+  -> compact repair context
+  -> specialist model
+  -> independent frontier judge
+  -> targeted validation
+  -> repair memory
 ```
 
-This keeps detailed exploration local to the worker and sends only distilled work to the next stage.
+### Causal Repository Twin
 
-### Recursive execution guarantees
+`CausalRepositoryTwin` combines the persistent code index with repository-level impact relationships. It can answer which files are affected by a runtime frame and return a narrow impact slice instead of replaying the whole repository.
 
-Execution is bounded by maximum depth, node count, parallel workers, and retries. Cycles are detected. When a judge rejects a result, only that node is retried with judge feedback rather than restarting the whole graph.
+The V8 direction follows recent repository-agent work such as RPG/RPG-Encoder, which unifies repository structure, semantics and dependencies into a persistent representation, and ARISE, which makes fine-grained data-flow slicing a first-class localization primitive. These systems report strong gains in repository localization and scalable maintenance. 
 
-### Code Intelligence and persistence
+### Runtime failure intelligence
 
-`CodeIntelligenceIndex` builds a lightweight Python AST/symbol graph, persists it to `data/code_index.json`, and can later retrieve only relevant symbols and source ranges. This means a new session can reuse the project map without rebuilding the entire conceptual view from scratch.
+`CausalErrorEngine` turns a traceback into a structured diagnosis containing:
 
-```text
-repository
-  -> AST
-  -> symbols + imports
-  -> persistent code graph
-  -> narrow source context
-  -> coding specialist
+- exact runtime frame
+- affected dependency files
+- narrow source context
+- evidence-backed root-cause hypothesis
+- confidence score
+- prior successful repair evidence
+
+### Repair memory
+
+`RepairMemory` stores compact, reviewable records of failures, root causes, patches and validation outcomes. Future failures can retrieve similar successful repairs instead of rediscovering the same solution.
+
+This follows the direction of recent memory-augmented repair research, where historical fixes and failed-to-successful refinement trajectories are reused for repository-scale repair. 
+
+### V8 public engine
+
+```python
+from myai import AIEngine
+
+ai = AIEngine()  # V8 by default
 ```
+
+Legacy V7.1 remains available as:
+
+```python
+from myai import LegacyAIEngine
+```
+
+### Repair workflow
+
+```python
+diagnosis = ai.diagnose_failure(traceback_text)
+proposal = ai.propose_repair(traceback_text)
+```
+
+V8 does not blindly overwrite production files. Patch promotion remains an explicit validation step so the system can run tests, inspect the changed impact slice and record whether the repair actually worked.
 
 ### Real model configuration
 
-Set `MYAI_FAST_MODEL_PROVIDER`, `MYAI_BALANCED_MODEL_PROVIDER`, and `MYAI_FRONTIER_MODEL_PROVIDER` to `compatible` and provide the endpoint/model/key for each tier. Local mode remains deterministic and does not require a network model.
-
-`MYAI_AGENT_MODE=auto` uses the recursive runtime for reasoning, research, and coding tasks; use `always` to force agent execution for every request.
+Set `MYAI_FAST_MODEL_PROVIDER`, `MYAI_BALANCED_MODEL_PROVIDER`, and `MYAI_FRONTIER_MODEL_PROVIDER` to `compatible` and provide the endpoint/model/key for each tier. Local mode remains deterministic and is useful for architecture tests.
 
 ### Local setup
 
@@ -73,12 +83,8 @@ pytest
 
 Runtime dependencies are listed in `requirements.txt`; development/CI dependencies are in `requirements-dev.txt`.
 
-### Semantic embeddings
+### Code-memory principle
 
-Sentence Transformers is the default embedding provider with `sentence-transformers/all-MiniLM-L6-v2`. The first local run downloads the embedding model into the normal model cache. The embedding device can be selected with `MYAI_EMBEDDING_DEVICE` (`cpu`, `cuda`, `mps`, or blank for automatic selection).
+Stable code should not be repeatedly re-read. The persistent code snapshot is freshness-aware; only changed/affected repository regions are eligible for re-indexing, and model context is limited to the relevant symbol/source slice.
 
-For CI and deterministic tests, set `MYAI_EMBEDDING_PROVIDER=deterministic` to avoid downloading model weights.
-
-### Knowledge database
-
-Knowledge is persisted in `data/knowledge.sqlite3` by default. The `data/` directory is intentionally ignored by Git because it is runtime state.
+Knowledge is persisted in `data/knowledge.sqlite3`; code intelligence in `data/code_index.json`; repair experience in `data/repair_memory.jsonl`.

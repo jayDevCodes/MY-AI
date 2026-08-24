@@ -44,7 +44,8 @@ class AIEngine:
         self.knowledge = self._build_knowledge_store()
         self.code_index = CodeIntelligenceIndex()
         self._code_index_ready = self.code_index.load_snapshot(
-            self.settings.code_index_snapshot_path
+            self.settings.code_index_snapshot_path,
+            self.settings.code_index_root,
         )
 
     def _build_knowledge_store(self) -> KnowledgeStore:
@@ -74,29 +75,43 @@ class AIEngine:
         """Rebuild and persist the project symbol graph after source changes."""
         self.code_index = CodeIntelligenceIndex()
         count = self.code_index.index_tree(self.settings.code_index_root)
-        self.code_index.save_snapshot(self.settings.code_index_snapshot_path)
+        self.code_index.save_snapshot(
+            self.settings.code_index_snapshot_path,
+            self.settings.code_index_root,
+        )
+        self._code_index_ready = True
         return count
+
+    def _ensure_code_index_fresh(self) -> None:
+        if not self.settings.code_index_enabled:
+            return
+        if not self._code_index_ready:
+            self._code_index_ready = self.code_index.load_snapshot(
+                self.settings.code_index_snapshot_path,
+                self.settings.code_index_root,
+            )
+        if not self._code_index_ready:
+            self.refresh_code_index()
+            return
+        if self.code_index.refresh_if_stale(self.settings.code_index_root):
+            self.code_index.save_snapshot(
+                self.settings.code_index_snapshot_path,
+                self.settings.code_index_root,
+            )
 
     def code_context(self, query: str, *, limit: int | None = None) -> tuple[dict[str, object], ...]:
         """Return only relevant symbols instead of repeatedly loading the whole repository."""
         if not self.settings.code_index_enabled:
             return ()
-        if not self._code_index_ready:
-            self._code_index_ready = self.code_index.load_snapshot(
-                self.settings.code_index_snapshot_path
-            )
-            if not self._code_index_ready:
-                self.refresh_code_index()
-                self._code_index_ready = True
+        self._ensure_code_index_fresh()
         return self.code_index.context_map(
             query,
             limit=limit if limit is not None else self.settings.code_context_limit,
         )
 
     def code_source_context(self, query: str, *, limit: int = 5) -> tuple[dict[str, object], ...]:
-        if not self.code_context(query, limit=limit):
-            return ()
-        return self.code_index.read_context(query, limit=limit)
+        source_context = self.code_index.read_context(query, limit=limit) if self.code_context(query, limit=limit) else ()
+        return source_context
 
     def route(self, request: ChatRequest, retrieved_count: int = 0) -> RoutingDecision:
         plan = self.cognitive.plan(request.message, retrieved_count)
@@ -193,12 +208,18 @@ class AIEngine:
             )
             messages.append(ChatMessage(role="system", content="\n".join(context_lines)))
         if plan is not None and plan.kind == "coding":
-            code_map = self.code_context(message)
-            if code_map:
+            source_context = self.code_source_context(message, limit=min(self.settings.code_context_limit, 5))
+            if source_context:
                 messages.append(
                     ChatMessage(
                         role="system",
-                        content="Relevant repository symbols:\n" + "\n".join(map(str, code_map)),
+                        content=(
+                            "Relevant repository source slices. Modify only after inspecting these exact ranges:\n"
+                            + "\n\n".join(
+                                f"[{item['path']}:{item['start_line']}-{item['end_line']}]\n{item['text']}"
+                                for item in source_context
+                            )
+                        ),
                     )
                 )
         messages.extend(history)

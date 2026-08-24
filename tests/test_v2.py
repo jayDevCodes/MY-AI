@@ -26,7 +26,7 @@ def test_engine_returns_v71_response(monkeypatch) -> None:
     response = engine.generate(ChatRequest(message="hello"))
 
     assert response.version == "v7.1"
-    assert response.model == "placeholder-v7"
+    assert response.model == "placeholder-v8"
     assert response.text
 
 
