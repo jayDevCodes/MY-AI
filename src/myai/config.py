@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     agent_mode: str = "auto"
     code_index_enabled: bool = True
     code_index_root: str = "."
+    code_index_snapshot_path: str = "data/code_index.json"
     code_context_limit: int = 8
     system_prompt: str = (
         "You are MY-AI V7.1. Operate as an evidence-first cognitive system. "
