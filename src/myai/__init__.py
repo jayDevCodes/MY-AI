@@ -9,6 +9,7 @@ from .cognitive_compute import CognitiveComputePolicy, CognitiveComputeControlle
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
 from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .context_contract import CognitiveContext, build_cognitive_context
+from .engine import AIEngine as LegacyAIEngine
 from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord, StrategyScore
 from .fault_lab import FaultCase, FaultInjectionLab, FaultResult
 from .graph_v9 import ProgramEdge, ProgramGraph, ProgramNode, ProgramSlice
