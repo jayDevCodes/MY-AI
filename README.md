@@ -19,7 +19,7 @@ request
   -> persistent memory
 ```
 
-The runtime now supports three separately configurable model tiers. Each tier can point to its own OpenAI-compatible endpoint/model, so a planner, specialist, critic, and judge can run on different models instead of pretending that one model did every job.
+The runtime supports three separately configurable model tiers. Each tier can point to its own OpenAI-compatible endpoint/model, so a planner, specialist, critic, and judge can run on different models instead of pretending that one model did every job.
 
 ### Context engineering
 
@@ -43,16 +43,16 @@ This keeps detailed exploration local to the worker and sends only distilled wor
 
 Execution is bounded by maximum depth, node count, parallel workers, and retries. Cycles are detected. When a judge rejects a result, only that node is retried with judge feedback rather than restarting the whole graph.
 
-### Code Intelligence
+### Code Intelligence and persistence
 
-`CodeIntelligenceIndex` builds a lightweight Python AST/symbol graph. Coding tasks can retrieve a narrow set of relevant files, classes, functions, parents, and line ranges rather than repeatedly loading the entire repository.
+`CodeIntelligenceIndex` builds a lightweight Python AST/symbol graph, persists it to `data/code_index.json`, and can later retrieve only relevant symbols and source ranges. This means a new session can reuse the project map without rebuilding the entire conceptual view from scratch.
 
 ```text
 repository
   -> AST
   -> symbols + imports
-  -> searchable code graph
-  -> narrow context
+  -> persistent code graph
+  -> narrow source context
   -> coding specialist
 ```
 
