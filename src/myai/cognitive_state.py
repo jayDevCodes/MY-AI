@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -86,23 +87,43 @@ class CognitiveState:
             raise ValueError("uncertainty must be between 0 and 1")
         self.uncertainty = value
 
-    def relevant_memories(self, *, kind: MemoryKind | None = None, limit: int = 8) -> tuple[MemoryItem, ...]:
+    @staticmethod
+    def _terms(text: str) -> set[str]:
+        return {term for term in re.findall(r"[a-z0-9_]{3,}", text.casefold())}
+
+    def relevant_memories(
+        self,
+        *,
+        query: str = "",
+        kind: MemoryKind | None = None,
+        limit: int = 8,
+    ) -> tuple[MemoryItem, ...]:
         if limit <= 0:
             return ()
         items = [item for item in self.memories if kind is None or item.kind == kind]
-        items.sort(key=lambda item: item.importance * item.confidence, reverse=True)
+        query_terms = self._terms(query)
+
+        def score(item: MemoryItem) -> tuple[float, str]:
+            base = item.importance * item.confidence
+            if not query_terms:
+                return base, item.created_at
+            item_terms = self._terms(f"{item.content} {' '.join(item.tags)}")
+            overlap = len(query_terms & item_terms) / max(1, len(query_terms))
+            return base + 2.0 * overlap, item.created_at
+
+        items.sort(key=score, reverse=True)
         return tuple(items[:limit])
 
     def summary(self) -> dict[str, object]:
         return {
             "goal": self.goal,
-            "subgoals": tuple(self.subgoals),
-            "beliefs": tuple(self.beliefs),
-            "constraints": tuple(self.constraints),
+            "subgoals": tuple(self.subgoals[:8]),
+            "beliefs": tuple(self.beliefs[:8]),
+            "constraints": tuple(self.constraints[:8]),
             "observations": tuple(self.observations[-8:]),
             "active_strategy": self.active_strategy,
             "uncertainty": self.uncertainty,
             "capability_snapshot": dict(self.capability_snapshot),
-            "world_snapshot": dict(self.world_snapshot),
+            "world_snapshot": dict(list(self.world_snapshot.items())[:8]),
             "memory_count": len(self.memories),
         }

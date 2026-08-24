@@ -7,6 +7,7 @@ from .code_intelligence import CodeIntelligenceIndex
 from .cognitive import CognitiveCore, CognitivePlan, VerificationResult
 from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .config import get_settings
+from .context_contract import build_cognitive_context
 from .embeddings import (
     DeterministicEmbeddingModel,
     EmbeddingModel,
@@ -246,11 +247,31 @@ class AIEngine:
         plan: CognitivePlan | None = None,
     ) -> list[ChatMessage]:
         messages = [ChatMessage(role="system", content=self.settings.system_prompt)]
-        if self.cognitive_state.summary():
+        context = build_cognitive_context(
+            self.cognitive_state,
+            query=message,
+            memory_kinds=(
+                MemoryKind.FAILURE,
+                MemoryKind.PROCEDURAL,
+                MemoryKind.STRATEGIC,
+                MemoryKind.SEMANTIC,
+                MemoryKind.EPISODIC,
+            ),
+            memory_limit=6,
+            belief_limit=6,
+            observation_limit=6,
+            capability_limit=8,
+            world_limit=8,
+        )
+        rendered_context = context.render()
+        if rendered_context:
             messages.append(
                 ChatMessage(
                     role="system",
-                    content=f"Shared cognitive state: {self.cognitive_state.summary()}",
+                    content=(
+                        "Bounded shared cognitive context. Use it as evidence-aware context, not ground truth; "
+                        "distinguish beliefs, memories and observations.\n" + rendered_context
+                    ),
                 )
             )
         if plan is not None:
@@ -284,7 +305,7 @@ class AIEngine:
                         ),
                     )
                 )
-        messages.extend(history)
+        messages.extend(history[-8:])
         messages.append(ChatMessage(role="user", content=message.strip()))
         return messages
 
