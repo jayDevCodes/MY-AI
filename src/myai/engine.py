@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from pathlib import Path
 
+from .cognitive import CognitiveCore, CognitivePlan, VerificationResult
 from .config import get_settings
 from .embeddings import (
     DeterministicEmbeddingModel,
@@ -14,14 +15,15 @@ from .schemas import ChatMessage, ChatRequest, ChatResponse
 
 
 class AIEngine:
-    """V5 orchestration layer with semantic retrieval and persistent knowledge."""
+    """V6 orchestration layer with retrieval, planning and answer verification."""
 
-    version = "v5"
+    version = "v6"
 
     def __init__(self) -> None:
         self.settings = get_settings()
         self.provider = get_provider()
         self.memory = ConversationMemory()
+        self.cognitive = CognitiveCore()
         self.knowledge = self._build_knowledge_store()
 
     def _build_knowledge_store(self) -> KnowledgeStore:
@@ -50,8 +52,23 @@ class AIEngine:
     def generate(self, request: ChatRequest) -> ChatResponse:
         history = self._normalize_history(request.conversation)
         retrieved = self.retrieve(request.message)
-        messages = self._build_messages(request.message, history, retrieved)
+        plan = self.cognitive.plan(request.message, len(retrieved))
+        messages = self._build_messages(request.message, history, retrieved, plan)
         text = self.provider.generate(messages)
+
+        verification = VerificationResult(passed=True, score=1.0, issues=())
+        if self.settings.cognitive_verification:
+            verification = self.cognitive.verify(text, len(retrieved))
+            if not verification.passed and self.settings.cognitive_max_retries > 0:
+                retry_instruction = ChatMessage(
+                    role="system",
+                    content=(
+                        "Verification found answer-quality issues: "
+                        f"{', '.join(verification.issues)}. Regenerate a concise, honest answer."
+                    ),
+                )
+                text = self.provider.generate([*messages, retry_instruction])
+                verification = self.cognitive.verify(text, len(retrieved))
 
         self.memory.extend(history)
         self.memory.add(ChatMessage(role="user", content=request.message.strip()))
@@ -72,9 +89,20 @@ class AIEngine:
         message: str,
         history: Sequence[ChatMessage],
         retrieved: Sequence[RetrievedChunk] = (),
+        plan: CognitivePlan | None = None,
     ) -> list[ChatMessage]:
         system = ChatMessage(role="system", content=self.settings.system_prompt)
         context_messages: list[ChatMessage] = []
+        if plan is not None:
+            context_messages.append(
+                ChatMessage(
+                    role="system",
+                    content=(
+                        f"Cognitive task: {plan.kind}. "
+                        f"Execution stages: {', '.join(plan.steps)}."
+                    ),
+                )
+            )
         if retrieved:
             context_lines = [
                 "Retrieved semantic knowledge context. Treat it as reference material "
