@@ -39,10 +39,14 @@ class RuntimeTraceGraph:
 
     def add(self, event: TraceEvent) -> None:
         self.events[event.event_id] = event
-        self._persist(event)
+        self._persist(asdict(event))
 
     def link(self, source_id: str, target_id: str, relation: str) -> None:
-        self.links.add(TraceCausalLink(source_id, target_id, relation))
+        link = TraceCausalLink(source_id, target_id, relation)
+        if link in self.links:
+            return
+        self.links.add(link)
+        self._persist({"record_type": "link", **asdict(link)})
 
     def record_exception(self, event_id: str, path: str, line: int, symbol: str, exc: BaseException) -> TraceEvent:
         event = TraceEvent(
@@ -66,11 +70,11 @@ class RuntimeTraceGraph:
                 related.add(link.source_id)
         return tuple(self.events[key] for key in sorted(related)[:limit] if key in self.events)
 
-    def _persist(self, event: TraceEvent) -> None:
+    def _persist(self, record: dict[str, object]) -> None:
         if not self.path:
             return
         with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(asdict(event), ensure_ascii=False) + "\n")
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     @classmethod
     def load(cls, path: str | Path) -> "RuntimeTraceGraph":
@@ -83,6 +87,15 @@ class RuntimeTraceGraph:
                 continue
             try:
                 raw: dict[str, Any] = json.loads(line)
+                if raw.get("record_type") == "link":
+                    graph.links.add(
+                        TraceCausalLink(
+                            source_id=str(raw["source_id"]),
+                            target_id=str(raw["target_id"]),
+                            relation=str(raw["relation"]),
+                        )
+                    )
+                    continue
                 event = TraceEvent(
                     event_id=str(raw["event_id"]),
                     timestamp=str(raw["timestamp"]),
