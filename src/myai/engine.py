@@ -1,6 +1,8 @@
 from collections.abc import Sequence
 from pathlib import Path
 
+from .agent_graph import ExecutionBudget
+from .agent_runtime import MultiModelAgentRuntime
 from .code_intelligence import CodeIntelligenceIndex
 from .cognitive import CognitiveCore, CognitivePlan, VerificationResult
 from .config import get_settings
@@ -12,14 +14,15 @@ from .embeddings import (
 from .knowledge import Document, KnowledgeStore, RetrievedChunk, SQLiteVectorStore
 from .memory import ConversationMemory
 from .model_router import AdaptiveModelRouter, RoutingRequest, RoutingDecision
+from .provider_pool import TieredModelPool
 from .providers import get_provider
 from .schemas import ChatMessage, ChatRequest, ChatResponse
 
 
 class AIEngine:
-    """V7 orchestration layer with routing, recursive-agent primitives and code intelligence."""
+    """V7.1 orchestration with multi-model agents, verification and code intelligence."""
 
-    version = "v7"
+    version = "v7.1"
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -27,6 +30,17 @@ class AIEngine:
         self.memory = ConversationMemory()
         self.cognitive = CognitiveCore()
         self.router = AdaptiveModelRouter()
+        self.model_pool = TieredModelPool(self.settings)
+        self.agent_runtime = MultiModelAgentRuntime(
+            self.model_pool,
+            self.router,
+            ExecutionBudget(
+                max_depth=self.settings.agent_max_depth,
+                max_nodes=self.settings.agent_max_nodes,
+                max_parallel=self.settings.agent_max_parallel,
+                max_retries=self.settings.agent_max_retries,
+            ),
+        )
         self.knowledge = self._build_knowledge_store()
         self.code_index = CodeIntelligenceIndex()
         self._code_index_ready = False
@@ -71,7 +85,10 @@ class AIEngine:
         return self.router.choose(
             RoutingRequest(
                 task_kind=plan.kind,
-                complexity=min(1.0, 0.35 + 0.1 * len(plan.steps) + 0.05 * len(request.message) / 1000),
+                complexity=min(
+                    1.0,
+                    0.35 + 0.1 * len(plan.steps) + 0.05 * len(request.message) / 1000,
+                ),
                 uncertainty=0.6 if plan.requires_verification else 0.2,
                 context_size=sum(len(message.content) for message in request.conversation),
                 risk="high" if plan.kind in {"research", "coding"} else "low",
@@ -80,13 +97,23 @@ class AIEngine:
             )
         )
 
+    def run_agent_task(self, request: ChatRequest, retrieved: Sequence[RetrievedChunk] = ()) -> str:
+        plan = self.cognitive.plan(request.message, len(retrieved))
+        context = self._build_context_messages(request.message, request.conversation, retrieved, plan)
+        return self.agent_runtime.run(request.message, plan.kind, context).artifact.output
+
     def generate(self, request: ChatRequest) -> ChatResponse:
         history = self._normalize_history(request.conversation)
         retrieved = self.retrieve(request.message)
         plan = self.cognitive.plan(request.message, len(retrieved))
         routing = self.route(request, len(retrieved))
-        messages = self._build_messages(request.message, history, retrieved, plan, routing)
-        text = self.provider.generate(messages)
+        mode = self.settings.agent_mode.lower()
+        use_agents = mode == "always" or (mode == "auto" and plan.kind in {"research", "reasoning", "coding"})
+
+        if use_agents:
+            text = self.run_agent_task(request, retrieved)
+        else:
+            text = self.provider.generate(self._build_messages(request.message, history, retrieved, plan, routing))
 
         verification = VerificationResult(passed=True, score=1.0, issues=())
         if self.settings.cognitive_verification:
@@ -99,22 +126,66 @@ class AIEngine:
                         f"{', '.join(verification.issues)}. Regenerate a concise, honest answer."
                     ),
                 )
-                text = self.provider.generate([*messages, retry_instruction])
+                if use_agents:
+                    retry_context = self._build_context_messages(
+                        request.message,
+                        request.conversation,
+                        retrieved,
+                        plan,
+                    )
+                    retry_context.append(retry_instruction)
+                    text = self.agent_runtime.run(request.message, plan.kind, retry_context).artifact.output
+                else:
+                    messages = self._build_messages(request.message, history, retrieved, plan, routing)
+                    text = self.provider.generate([*messages, retry_instruction])
                 verification = self.cognitive.verify(text, len(retrieved))
 
         self.memory.extend(history)
         self.memory.add(ChatMessage(role="user", content=request.message.strip()))
         self.memory.add(ChatMessage(role="assistant", content=text))
 
-        return ChatResponse(
-            text=text,
-            model=self.settings.model_name,
-            version=self.version,
-        )
+        return ChatResponse(text=text, model=self.settings.model_name, version=self.version)
 
     @staticmethod
     def _normalize_history(messages: Sequence[ChatMessage]) -> list[ChatMessage]:
         return [message for message in messages if message.content.strip()]
+
+    def _build_context_messages(
+        self,
+        message: str,
+        history: Sequence[ChatMessage],
+        retrieved: Sequence[RetrievedChunk] = (),
+        plan: CognitivePlan | None = None,
+    ) -> list[ChatMessage]:
+        messages = [ChatMessage(role="system", content=self.settings.system_prompt)]
+        if plan is not None:
+            messages.append(
+                ChatMessage(
+                    role="system",
+                    content=f"Cognitive task: {plan.kind}. Execution stages: {', '.join(plan.steps)}.",
+                )
+            )
+        if retrieved:
+            context_lines = [
+                "Retrieved semantic knowledge context. Treat it as reference material and do not invent sources:"
+            ]
+            context_lines.extend(
+                f"[{item.source}#{item.chunk_index} score={item.score:.4f}] {item.text}"
+                for item in retrieved
+            )
+            messages.append(ChatMessage(role="system", content="\n".join(context_lines)))
+        if plan is not None and plan.kind == "coding":
+            code_map = self.code_context(message)
+            if code_map:
+                messages.append(
+                    ChatMessage(
+                        role="system",
+                        content="Relevant repository symbols:\n" + "\n".join(map(str, code_map)),
+                    )
+                )
+        messages.extend(history)
+        messages.append(ChatMessage(role="user", content=message.strip()))
+        return messages
 
     def _build_messages(
         self,
@@ -124,38 +195,16 @@ class AIEngine:
         plan: CognitivePlan | None = None,
         routing: RoutingDecision | None = None,
     ) -> list[ChatMessage]:
-        system = ChatMessage(role="system", content=self.settings.system_prompt)
-        context_messages: list[ChatMessage] = []
-        if plan is not None:
-            context_messages.append(
-                ChatMessage(
-                    role="system",
-                    content=(
-                        f"Cognitive task: {plan.kind}. "
-                        f"Execution stages: {', '.join(plan.steps)}."
-                    ),
-                )
-            )
+        messages = self._build_context_messages(message, history, retrieved, plan)
         if routing is not None:
-            context_messages.append(
+            messages.insert(
+                min(2, len(messages)),
                 ChatMessage(
                     role="system",
                     content=(
                         f"Routing tier: {routing.tier}. {routing.reason}. "
                         f"Parallel work allowed: {routing.allow_parallel}."
                     ),
-                )
+                ),
             )
-        if retrieved:
-            context_lines = [
-                "Retrieved semantic knowledge context. Treat it as reference material "
-                "and do not invent sources:"
-            ]
-            for item in retrieved:
-                context_lines.append(
-                    f"[{item.source}#{item.chunk_index} score={item.score:.4f}] {item.text}"
-                )
-            context_messages.append(ChatMessage(role="system", content="\n".join(context_lines)))
-
-        current = ChatMessage(role="user", content=message.strip())
-        return [system, *context_messages, *history, current]
+        return messages
