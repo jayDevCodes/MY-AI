@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-ai"
-version = "0.7.0"
-description = "MY-AI V7: recursive agent graph, adaptive routing, code intelligence, semantic memory"
+version = "0.7.1"
+description = "MY-AI V7.1: recursive multi-model agents, adaptive routing, code intelligence, semantic memory"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
