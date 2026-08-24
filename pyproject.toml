@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "my-ai"
-version = "0.9.0"
-description = "MY-AI V9: cognitive mesh, unified program graph, runtime traces, self-evolving strategy memory"
+version = "0.10.0"
+description = "MY-AI V10: cognitive mesh, causal repository intelligence, bounded self-healing runtime, fault testing, and evidence-driven evolution"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
