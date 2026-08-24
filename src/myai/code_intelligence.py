@@ -26,10 +26,12 @@ class CodeFile:
 class CodeIntelligenceIndex:
     """Persistent lightweight AST/symbol graph with freshness-aware snapshots."""
 
-    snapshot_version = 2
+    snapshot_version = 3
 
     def __init__(self) -> None:
         self.files: dict[str, CodeFile] = {}
+        self._snapshot_signatures: dict[str, tuple[int, int] | None] = {}
+        self._snapshot_root: str | None = None
 
     def index_file(self, path: str | Path) -> CodeFile:
         file_path = Path(path)
@@ -104,16 +106,18 @@ class CodeIntelligenceIndex:
     def refresh_if_stale(self, root: str | Path) -> bool:
         """Rebuild only when source inventory/stat signatures differ from the snapshot."""
         current_paths = self._candidate_paths(root)
-        current_signatures = {
-            path: self._stat_signature(path) for path in current_paths
-        }
-        snapshot_signatures = getattr(self, "_snapshot_signatures", {})
-        stale = set(snapshot_signatures) != current_paths
+        current_signatures = {path: self._stat_signature(path) for path in current_paths}
+        snapshot_signatures = self._snapshot_signatures
+        stale = self._snapshot_root != str(Path(root))
+        if not stale:
+            stale = set(snapshot_signatures) != current_paths
         if not stale:
             stale = any(snapshot_signatures[path] != current_signatures[path] for path in current_paths)
         if stale:
             self.files.clear()
             self.index_tree(root)
+            self._snapshot_signatures = current_signatures
+            self._snapshot_root = str(Path(root))
             return True
         return False
 
@@ -165,7 +169,7 @@ class CodeIntelligenceIndex:
             )
         return tuple(contexts)
 
-    def save_snapshot(self, path: str | Path) -> None:
+    def save_snapshot(self, path: str | Path, root: str | Path = ".") -> None:
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         signatures = {
@@ -175,6 +179,7 @@ class CodeIntelligenceIndex:
         }
         payload = {
             "version": self.snapshot_version,
+            "root": str(Path(root)),
             "signatures": signatures,
             "files": [
                 {
@@ -197,8 +202,9 @@ class CodeIntelligenceIndex:
         }
         target.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
         self._snapshot_signatures = signatures
+        self._snapshot_root = str(Path(root))
 
-    def load_snapshot(self, path: str | Path) -> bool:
+    def load_snapshot(self, path: str | Path, root: str | Path = ".") -> bool:
         target = Path(path)
         if not target.exists():
             return False
@@ -206,16 +212,18 @@ class CodeIntelligenceIndex:
             payload = json.loads(target.read_text(encoding="utf-8"))
             if payload.get("version") != self.snapshot_version:
                 return False
+            expected_root = str(Path(root))
+            if str(payload.get("root", expected_root)) != expected_root:
+                return False
             signatures = {
                 str(key): tuple(value) if value is not None else None
                 for key, value in payload.get("signatures", {}).items()
             }
-            # Validate only filesystem metadata; do not reread source just to decide freshness.
             for file_path, signature in signatures.items():
                 if self._stat_signature(file_path) != signature:
                     return False
-            current_paths = set(self._candidate_paths(Path(".")))
-            if current_paths and current_paths != set(signatures):
+            current_paths = self._candidate_paths(root)
+            if current_paths != set(signatures):
                 return False
 
             files: dict[str, CodeFile] = {}
@@ -239,6 +247,7 @@ class CodeIntelligenceIndex:
                 files[code_file.path] = code_file
             self.files = files
             self._snapshot_signatures = signatures
+            self._snapshot_root = expected_root
             return True
         except (OSError, ValueError, TypeError, KeyError):
             self.files.clear()
