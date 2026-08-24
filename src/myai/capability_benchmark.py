@@ -14,14 +14,54 @@ class BenchmarkCase:
 
 
 DEFAULT_CASES = (
-    BenchmarkCase("recursive-agent-graph", "planning", "Decompose and execute bounded specialist work.", "artifact success"),
-    BenchmarkCase("frontier-routing", "reasoning", "Escalate high-uncertainty work to the frontier tier.", "correct tier"),
-    BenchmarkCase("program-graph-localization", "repository_understanding", "Localize a target through program/data/control context.", "target in slice"),
-    BenchmarkCase("causal-trace-diagnosis", "debugging", "Map runtime failure to a compact causal impact slice.", "frame + impact evidence"),
-    BenchmarkCase("cross-episode-repair-memory", "memory", "Reuse a validated repair strategy across episodes.", "successful retrieval"),
-    BenchmarkCase("trace-verification", "verification", "Reject or accept a repair using execution evidence.", "validated outcome"),
-    BenchmarkCase("targeted-context", "efficiency", "Avoid unrelated repository context for a targeted task.", "context reduction"),
-    BenchmarkCase("strategy-promotion", "self_improvement", "Promote only measured improvements over baseline.", "promotion gate"),
+    BenchmarkCase(
+        "recursive-agent-graph",
+        "planning",
+        "Decompose and execute bounded specialist work.",
+        "artifact success",
+    ),
+    BenchmarkCase(
+        "frontier-routing",
+        "reasoning",
+        "Escalate high-uncertainty work to the frontier tier.",
+        "correct tier",
+    ),
+    BenchmarkCase(
+        "program-graph-localization",
+        "repository_understanding",
+        "Localize a target through program/data/control context.",
+        "target in slice",
+    ),
+    BenchmarkCase(
+        "causal-trace-diagnosis",
+        "debugging",
+        "Map runtime failure to a compact causal impact slice.",
+        "frame + impact evidence",
+    ),
+    BenchmarkCase(
+        "cross-episode-repair-memory",
+        "memory",
+        "Reuse a validated repair strategy across episodes.",
+        "successful retrieval",
+    ),
+    BenchmarkCase(
+        "trace-verification",
+        "verification",
+        "Reject or accept a repair using execution evidence.",
+        "validated outcome",
+    ),
+    BenchmarkCase(
+        "targeted-context",
+        "efficiency",
+        "Avoid unrelated repository context for a targeted task.",
+        "context reduction",
+    ),
+    BenchmarkCase(
+        "strategy-promotion",
+        "self_improvement",
+        "Promote only measured improvements over baseline.",
+        "promotion gate",
+    ),
 )
 
 
@@ -41,17 +81,32 @@ class CapabilityBenchmark:
     ) -> CapabilitySnapshot:
         scores: list[CapabilityScore] = []
         for dimension in DIMENSIONS:
-            matching = [case for case in self.cases if case.dimension == dimension and case.name in results]
+            matching = [
+                case
+                for case in self.cases
+                if case.dimension == dimension and case.name in results
+            ]
             values = [results[case.name] for case in matching]
             if values:
                 value = sum(item[0] for item in values) / len(values)
-                evidence = tuple(e for _, evidence_items in values for e in evidence_items)
+                evidence = tuple(
+                    evidence_item
+                    for _, evidence_items in values
+                    for evidence_item in evidence_items
+                )
                 status = "measured"
             else:
                 value = 0.0
                 evidence = ()
                 status = "unmeasured"
-            scores.append(CapabilityScore(dimension, round(value, 4), status, evidence=evidence))
+            scores.append(
+                CapabilityScore(
+                    dimension,
+                    round(value, 4),
+                    status,
+                    evidence=evidence,
+                )
+            )
 
         passes = sum(1 for score, _ in results.values() if score >= 0.8)
         return CapabilitySnapshot(
