@@ -20,7 +20,7 @@ from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .provider_pool import ModelEndpoint, TieredModelPool
 from .repository_twin import CausalRepositoryTwin, ImpactSlice, TwinEdge, TwinNode
 from .runtime_trace import RuntimeTraceGraph, TraceCausalLink, TraceEvent
-from .schemas import ChatRequest, ChatResponse
+from .schemas import ChatMessage, ChatRequest, ChatResponse
 from .self_healing import (
     CausalDiagnosis,
     CausalErrorEngine,
