@@ -9,8 +9,11 @@ from pathlib import Path
 from .repository_twin import CausalRepositoryTwin, ImpactSlice
 
 
-_TRACE_RE = re.compile(r'File ["\'](?P<path>.+?)["\'], line (?P<line>\d+), in (?P<symbol>[^\n]+)')
-_ERROR_RE = re.compile(r'^(?P<type>[A-Za-z_][A-Za-z0-9_.]*(?:Error|Exception|Warning)):\s*(?P<message>.*)$', re.MULTILINE)
+_TRACE_RE = re.compile(r"File [\"'](?P<path>.+?)[\"'], line (?P<line>\d+), in (?P<symbol>[^\n]+)")
+_ERROR_RE = re.compile(
+    r"^(?P<type>[A-Za-z_][A-Za-z0-9_.]*(?:Error|Exception|Warning)):\s*(?P<message>.*)$",
+    re.MULTILINE,
+)
 
 
 @dataclass(frozen=True)
@@ -68,7 +71,7 @@ class RepairMemory:
         if not self.path.exists():
             return ()
         wanted = _signature(error_type, message)
-        records: list[RepairMemoryRecord] = []
+        scored: list[tuple[float, RepairMemoryRecord]] = []
         for line in self.path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
@@ -89,9 +92,9 @@ class RepairMemory:
             score = _similarity(wanted, record.signature)
             if record.error_type == error_type:
                 score += 1
-            records.append((score, record))
-        records.sort(key=lambda item: (-item[0], item[1].timestamp), reverse=False)
-        return tuple(record for _, record in records[:limit])
+            scored.append((score, record))
+        scored.sort(key=lambda item: (-item[0], item[1].timestamp))
+        return tuple(record for _, record in scored[:limit])
 
 
 class CausalErrorEngine:
@@ -103,12 +106,21 @@ class CausalErrorEngine:
 
     def parse_failure(self, traceback_text: str) -> FailureEvent:
         frames = tuple(
-            FailureFrame(match.group("path"), int(match.group("line")), match.group("symbol").strip())
+            FailureFrame(
+                match.group("path"),
+                int(match.group("line")),
+                match.group("symbol").strip(),
+            )
             for match in _TRACE_RE.finditer(traceback_text)
         )
-        error_match = list(_ERROR_RE.finditer(traceback_text))[-1] if _ERROR_RE.search(traceback_text) else None
+        errors = list(_ERROR_RE.finditer(traceback_text))
+        error_match = errors[-1] if errors else None
         error_type = error_match.group("type") if error_match else "RuntimeError"
-        message = error_match.group("message").strip() if error_match else traceback_text.strip().splitlines()[-1]
+        message = (
+            error_match.group("message").strip()
+            if error_match
+            else traceback_text.strip().splitlines()[-1]
+        )
         return FailureEvent(
             error_type=error_type,
             message=message,
@@ -135,7 +147,13 @@ class CausalErrorEngine:
             if history and history[0].success
             else f"Investigate {query} at the primary runtime frame and its dependency impact slice."
         )
-        confidence = min(0.99, 0.45 + (0.2 if primary else 0) + (0.15 if impact.nodes else 0) + (0.15 if history else 0))
+        confidence = min(
+            0.99,
+            0.45
+            + (0.2 if primary else 0)
+            + (0.15 if impact.nodes else 0)
+            + (0.15 if history else 0),
+        )
         return CausalDiagnosis(
             error_type=event.error_type,
             message=event.message,
