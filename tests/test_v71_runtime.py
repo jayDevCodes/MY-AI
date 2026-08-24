@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from myai.agent_graph import ExecutionBudget
 from myai.agent_runtime import MultiModelAgentRuntime
+from myai.code_intelligence import CodeIntelligenceIndex
 from myai.model_router import AdaptiveModelRouter
 from myai.provider_pool import ModelTier
 from myai.schemas import ChatMessage
@@ -48,3 +51,19 @@ def test_runtime_preserves_compact_artifact_handoff() -> None:
     result = runtime.run("compare two approaches", "reasoning")
     assert result.artifact.children
     assert all(child.findings for child in result.artifact.children)
+
+
+def test_code_index_snapshot_roundtrip(tmp_path: Path) -> None:
+    source = tmp_path / "sample.py"
+    source.write_text("def refresh_token():\n    return True\n", encoding="utf-8")
+    snapshot = tmp_path / "index.json"
+
+    original = CodeIntelligenceIndex()
+    assert original.index_tree(tmp_path) == 1
+    original.save_snapshot(snapshot)
+
+    restored = CodeIntelligenceIndex()
+    assert restored.load_snapshot(snapshot) is True
+    context = restored.context_map("refresh token")
+    assert context
+    assert context[0]["symbol"] == "refresh_token"
