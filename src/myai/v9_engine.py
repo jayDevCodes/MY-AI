@@ -7,6 +7,7 @@ from .capability_ledger import CapabilityLedger
 from .cognitive_compute import CognitiveComputeController, CognitiveComputePolicy
 from .evolution import EvolutionMemory, EvolutionRecord, StrategyScore
 from .graph_v9 import ProgramGraph, ProgramSlice
+from .model_report import ModelReport, build_model_report
 from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .runtime_trace import RuntimeTraceGraph
 from .schemas import ChatMessage
@@ -58,6 +59,10 @@ class V9AIEngine(V8AIEngine):
             strategy_scores=self.strategy_scores(limit=8),
         )
         return controller.policy_for(request, decision)
+
+    def model_report(self) -> ModelReport:
+        """Return a live report derived from this engine's current architecture and evidence."""
+        return build_model_report(self)
 
     def record_generation_experience(
         self,
