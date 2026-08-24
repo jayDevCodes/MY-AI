@@ -125,7 +125,10 @@ class CapabilityLedger:
             "version": current.version,
             "commit": current.commit,
             "captured_at": current.captured_at,
-            "scores": {item.dimension: item.score for item in current.scores},
+            "scores": {
+                item.dimension: (item.score if item.status == "measured" else None)
+                for item in current.scores
+            },
             "regressions": list(self.regressions(current, previous)),
             "benchmark_count": current.benchmark_count,
             "benchmark_passes": current.benchmark_passes,
