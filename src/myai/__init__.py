@@ -2,6 +2,8 @@
 
 from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
+from .capability_benchmark import BenchmarkCase, CapabilityBenchmark
+from .capability_ledger import CapabilityLedger, CapabilityScore, CapabilitySnapshot
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
 from .engine import AIEngine as LegacyAIEngine
 from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord, StrategyScore
@@ -38,6 +40,11 @@ __all__ = [
     "LegacyAIEngine",
     "AdaptiveModelRouter",
     "AgentRuntimeResult",
+    "BenchmarkCase",
+    "CapabilityBenchmark",
+    "CapabilityLedger",
+    "CapabilityScore",
+    "CapabilitySnapshot",
     "ChatRequest",
     "ChatResponse",
     "CodeFile",
