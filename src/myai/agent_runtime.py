@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from .agent_graph import ExecutionBudget, JudgeVerdict, RecursiveAgentGraph, TaskNode, WorkArtifact
+from .cognitive_state import CognitiveState
 from .model_router import AdaptiveModelRouter, RoutingRequest
 from .provider_pool import ModelTier, TieredModelPool
 from .schemas import ChatMessage
@@ -25,16 +26,26 @@ class MultiModelAgentRuntime:
         self.budget = budget
         self._tiers: dict[str, ModelTier] = {}
 
-    def run(self, objective: str, task_kind: str, context: Sequence[ChatMessage] = ()) -> AgentRuntimeResult:
+    def run(
+        self,
+        objective: str,
+        task_kind: str,
+        context: Sequence[ChatMessage] = (),
+        state: CognitiveState | None = None,
+    ) -> AgentRuntimeResult:
         self._tiers.clear()
         graph = RecursiveAgentGraph(self.budget)
         root = TaskNode("root", objective, role=task_kind)
         result = graph.run(
             root,
             decompose=lambda node, budget: self._decompose(node, budget),
-            worker=lambda node, children: self._worker(node, children, context),
-            judge=lambda node, artifact, children: self._judge(node, artifact, children),
+            worker=lambda node, children: self._worker(node, children, context, state),
+            judge=lambda node, artifact, children: self._judge(node, artifact, children, state),
         )
+        if state is not None:
+            state.active_strategy = f"recursive-agent:{task_kind}"
+            state.observe(f"agent-runtime-complete:{task_kind}:{result.confidence:.2f}")
+            state.set_uncertainty(max(0.0, min(1.0, 1.0 - result.confidence)))
         return AgentRuntimeResult(result, tuple(sorted(self._tiers.items())))
 
     def _decompose(self, node: TaskNode, budget: ExecutionBudget) -> Sequence[TaskNode]:
@@ -76,24 +87,28 @@ class MultiModelAgentRuntime:
         node: TaskNode,
         children: Sequence[WorkArtifact],
         context: Sequence[ChatMessage],
+        state: CognitiveState | None = None,
     ) -> WorkArtifact:
         tier = self._choose_tier(node, context)
         child_text = "\n".join(
             f"[{child.task_id} confidence={child.confidence:.2f}] {child.output}"
             for child in children
         )
+        state_text = state.summary() if state is not None else "(no shared cognitive state)"
         system = ChatMessage(
             role="system",
             content=(
-                "You are a specialist worker in MY-AI V7.1. Return only useful work for the "
+                "You are a specialist worker in MY-AI V9.1. Return only useful work for the "
                 "assigned role. Do not claim tools or evidence you did not receive. Preserve "
-                "uncertainty and disagreements."
+                "uncertainty and disagreements. Use the shared cognitive state as context, not as "
+                "proof; distinguish beliefs from observations and avoid inventing missing facts."
             ),
         )
         prompt = ChatMessage(
             role="user",
             content=(
                 f"ROLE: {node.role}\nOBJECTIVE: {node.objective}\n"
+                f"COGNITIVE STATE:\n{state_text}\n"
                 f"PRIOR SPECIALIST ARTIFACTS:\n{child_text or '(none)'}"
             ),
         )
@@ -111,37 +126,43 @@ class MultiModelAgentRuntime:
         node: TaskNode,
         artifact: WorkArtifact,
         children: Sequence[WorkArtifact],
+        state: CognitiveState | None = None,
     ) -> JudgeVerdict:
         tier: ModelTier = "frontier"
         self._tiers[f"{node.id}:judge"] = tier
         child_summary = "\n".join(
             f"[{child.task_id}] {child.output}" for child in children
         )
+        state_text = state.summary() if state is not None else "(no shared cognitive state)"
         messages = [
             ChatMessage(
                 role="system",
                 content=(
-                    "You are an independent judge. Evaluate whether the worker output is "
-                    "consistent, useful, evidence-aware and complete. Return JSON only: "
+                    "You are an independent judge for MY-AI V9.1. Evaluate whether the worker output is "
+                    "consistent, useful, evidence-aware and complete. Treat the cognitive state as "
+                    "context rather than ground truth. Return JSON only: "
                     '{"passed":true|false,"confidence":0.0-1.0,"feedback":"..."}'
                 ),
             ),
             ChatMessage(
                 role="user",
                 content=(
-                    f"TASK: {node.objective}\nWORKER:\n{artifact.output}\n"
-                    f"CHILDREN:\n{child_summary or '(none)'}"
+                    f"TASK: {node.objective}\nCOGNITIVE STATE:\n{state_text}\n"
+                    f"WORKER:\n{artifact.output}\nCHILDREN:\n{child_summary or '(none)'}"
                 ),
             ),
         ]
         raw = self.pool.generate(tier, messages)
         try:
             data = json.loads(raw)
-            return JudgeVerdict(
+            verdict = JudgeVerdict(
                 bool(data.get("passed")),
                 max(0.0, min(1.0, float(data.get("confidence", 0.0)))),
                 str(data.get("feedback", "")),
             )
         except (TypeError, ValueError, json.JSONDecodeError):
             passed = bool(raw.strip()) and "error" not in raw.casefold()
-            return JudgeVerdict(passed, 0.5 if passed else 0.0, "Judge output was not valid JSON.")
+            verdict = JudgeVerdict(passed, 0.5 if passed else 0.0, "Judge output was not valid JSON.")
+        if state is not None:
+            state.observe(f"judge:{node.role}:{'passed' if verdict.passed else 'failed'}:{verdict.confidence:.2f}")
+        return verdict
