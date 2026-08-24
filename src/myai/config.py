@@ -12,6 +12,18 @@ class Settings(BaseSettings):
     model_base_url: str = "http://localhost:11434"
     model_api_key: str = ""
     model_timeout_seconds: float = 60.0
+    fast_model_provider: str = "local"
+    fast_model_name: str = "placeholder-v7-fast"
+    fast_model_base_url: str = "http://localhost:11434"
+    fast_model_api_key: str = ""
+    balanced_model_provider: str = "local"
+    balanced_model_name: str = "placeholder-v7-balanced"
+    balanced_model_base_url: str = "http://localhost:11434"
+    balanced_model_api_key: str = ""
+    frontier_model_provider: str = "local"
+    frontier_model_name: str = "placeholder-v7-frontier"
+    frontier_model_base_url: str = "http://localhost:11434"
+    frontier_model_api_key: str = ""
     memory_max_messages: int = 20
     knowledge_top_k: int = 5
     knowledge_chunk_size: int = 800
@@ -26,12 +38,13 @@ class Settings(BaseSettings):
     agent_max_nodes: int = 32
     agent_max_parallel: int = 4
     agent_max_retries: int = 1
+    agent_mode: str = "auto"
     code_index_enabled: bool = True
     code_index_root: str = "."
     code_context_limit: int = 8
     system_prompt: str = (
-        "You are MY-AI V7. Operate as an evidence-first cognitive system. "
-        "Use retrieved knowledge and structured agent artifacts when supplied. "
+        "You are MY-AI V7.1. Operate as an evidence-first cognitive system. "
+        "Use retrieved knowledge, code context, and structured specialist artifacts when supplied. "
         "Never invent sources, tool usage, verification, or repository facts. "
         "Prefer the smallest sufficient context, preserve useful prior work, "
         "and explicitly acknowledge uncertainty or disagreement."
