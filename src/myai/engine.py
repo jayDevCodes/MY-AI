@@ -15,6 +15,7 @@ from .embeddings import (
 )
 from .knowledge import Document, KnowledgeStore, RetrievedChunk, SQLiteVectorStore
 from .memory import ConversationMemory
+from .memory_lifecycle import MemoryLifecycleManager
 from .memory_store import CognitiveMemoryStore
 from .model_router import AdaptiveModelRouter, RoutingRequest, RoutingDecision
 from .provider_pool import TieredModelPool
@@ -33,6 +34,7 @@ class AIEngine:
         self.memory = ConversationMemory()
         self.cognitive = CognitiveCore()
         self.cognitive_state = CognitiveState()
+        self.memory_lifecycle = MemoryLifecycleManager()
         self.memory_store = CognitiveMemoryStore(self.settings.memory_store_path)
         self.memory_store.hydrate(self.cognitive_state, limit=self.settings.memory_load_limit)
         self.router = AdaptiveModelRouter()
@@ -146,6 +148,16 @@ class AIEngine:
             state=self.cognitive_state,
         ).artifact.output
 
+    def _consolidate_memory_if_due(self) -> None:
+        """Promote repeated verified episodes without mutating raw evidence."""
+        if len(self.cognitive_state.memories) == 0 or len(self.cognitive_state.memories) % 16 != 0:
+            return
+        existing = {(item.kind, item.content) for item in self.cognitive_state.memories}
+        for promotion in self.memory_lifecycle.consolidate(self.cognitive_state.memories):
+            if (promotion.kind, promotion.content) not in existing:
+                self.cognitive_state.add_memory(promotion)
+                existing.add((promotion.kind, promotion.content))
+
     def generate(self, request: ChatRequest) -> ChatResponse:
         history = self._normalize_history(request.conversation)
         retrieved = self.retrieve(request.message)
@@ -228,6 +240,7 @@ class AIEngine:
                 tags=(plan.kind, routing.tier),
             )
         )
+        self._consolidate_memory_if_due()
         self.memory_store.persist_state(self.cognitive_state)
         self.memory.extend(history)
         self.memory.add(ChatMessage(role="user", content=request.message.strip()))
