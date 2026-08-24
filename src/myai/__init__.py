@@ -1,4 +1,4 @@
-"""MY-AI V9.1 public package with V10 self-healing runtime controls."""
+"""MY-AI V10 public package with self-healing runtime controls."""
 
 from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
@@ -40,11 +40,13 @@ from .self_healing_runtime import FailureSignature, FailureSignatureStore, Repai
 from .stability import CodeHealth, CodeHealthStore
 from .v8_engine import V8AIEngine
 from .v9_engine import V9AIEngine
+from .v10_engine import V10AIEngine
 
-AIEngine = V9AIEngine
+AIEngine = V10AIEngine
 
 __all__ = [
     "AIEngine",
+    "V10AIEngine",
     "V9AIEngine",
     "V8AIEngine",
     "LegacyAIEngine",
