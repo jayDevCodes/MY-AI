@@ -1,8 +1,8 @@
-name: V4 CI
+name: V6 CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, v6-cognitive-core]
   pull_request:
     branches: [main]
 
@@ -76,7 +76,7 @@ jobs:
           added = ai.add_document(Document(source="ci.txt", text="Paris is the capital of France."))
           assert added == 1
           result = ai.generate(ChatRequest(message="What is the capital of France?"))
-          assert result.version == "v4"
+          assert result.version == "v6"
           assert result.text
           print(result.model)
           PY
