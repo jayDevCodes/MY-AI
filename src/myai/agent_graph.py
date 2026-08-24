@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Callable, Protocol, Sequence
+from threading import RLock
+from typing import Protocol, Sequence
 
 
 @dataclass(frozen=True)
@@ -62,15 +63,16 @@ class Judge(Protocol):
 class RecursiveAgentGraph:
     """Bounded hierarchical orchestration for heterogeneous model agents.
 
-    The graph recursively decomposes a task, executes independent branches in
-    parallel, synthesizes their structured artifacts, and retries only a failed
-    node. Agents exchange compact artifacts rather than replaying full context.
+    Independent branches run in parallel, then exchange compact structured
+    artifacts. Failed synthesis is retried locally instead of recomputing the
+    entire tree. Budget accounting is synchronized across worker threads.
     """
 
     def __init__(self, budget: ExecutionBudget | None = None) -> None:
         self.budget = budget or ExecutionBudget()
         self._visited: set[str] = set()
         self._node_count = 0
+        self._lock = RLock()
 
     def run(
         self,
@@ -80,8 +82,9 @@ class RecursiveAgentGraph:
         worker: Worker,
         judge: Judge,
     ) -> WorkArtifact:
-        self._visited.clear()
-        self._node_count = 0
+        with self._lock:
+            self._visited.clear()
+            self._node_count = 0
         return self._solve(root, decompose=decompose, worker=worker, judge=judge)
 
     def _solve(
@@ -92,25 +95,26 @@ class RecursiveAgentGraph:
         worker: Worker,
         judge: Judge,
     ) -> WorkArtifact:
-        if node.id in self._visited:
-            return WorkArtifact(
-                task_id=node.id,
-                role=node.role,
-                output="cycle_detected",
-                confidence=0.0,
-                open_questions=("task graph cycle detected",),
-            )
-        if node.depth > self.budget.max_depth or self._node_count >= self.budget.max_nodes:
-            return WorkArtifact(
-                task_id=node.id,
-                role=node.role,
-                output="budget_exhausted",
-                confidence=0.0,
-                open_questions=("execution budget exhausted",),
-            )
+        with self._lock:
+            if node.id in self._visited:
+                return WorkArtifact(
+                    task_id=node.id,
+                    role=node.role,
+                    output="cycle_detected",
+                    confidence=0.0,
+                    open_questions=("task graph cycle detected",),
+                )
+            if node.depth > self.budget.max_depth or self._node_count >= self.budget.max_nodes:
+                return WorkArtifact(
+                    task_id=node.id,
+                    role=node.role,
+                    output="budget_exhausted",
+                    confidence=0.0,
+                    open_questions=("execution budget exhausted",),
+                )
+            self._visited.add(node.id)
+            self._node_count += 1
 
-        self._visited.add(node.id)
-        self._node_count += 1
         children = tuple(decompose(node, self.budget))
         if children:
             child_results = self._solve_parallel(
@@ -127,9 +131,7 @@ class RecursiveAgentGraph:
             retries += 1
             retry_node = TaskNode(
                 id=node.id,
-                objective=(
-                    f"{node.objective}\n\nJudge feedback:\n{verdict.feedback}"
-                ),
+                objective=f"{node.objective}\n\nJudge feedback:\n{verdict.feedback}",
                 role=node.role,
                 depth=node.depth,
                 parent_id=node.parent_id,
@@ -157,7 +159,7 @@ class RecursiveAgentGraph:
         worker: Worker,
         judge: Judge,
     ) -> tuple[WorkArtifact, ...]:
-        with ThreadPoolExecutor(max_workers=self.budget.max_parallel) as pool:
+        with ThreadPoolExecutor(max_workers=min(self.budget.max_parallel, len(nodes))) as pool:
             futures = [
                 pool.submit(
                     self._solve,
