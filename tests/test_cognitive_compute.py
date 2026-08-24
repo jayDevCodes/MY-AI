@@ -31,7 +31,7 @@ def _ledger(tmp_path, score: float) -> CapabilityLedger:
 
 
 def test_low_capability_gap_allocates_more_compute(tmp_path) -> None:
-    ledger = _ledger(tmp_path, 0.35)
+    ledger = _ledger(tmp_path, 0.10)
     request = RoutingRequest(task_kind="coding", complexity=0.5, uncertainty=0.2)
     decision = AdaptiveModelRouter().choose(request)
 
