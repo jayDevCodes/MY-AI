@@ -1,8 +1,8 @@
-name: V7.1 CI
+name: MY-AI CI
 
 on:
   push:
-    branches: [main, v6-cognitive-core, v7-recursive-agent-graph]
+    branches: [main, v6-cognitive-core, v7-recursive-agent-graph, fix/v10-ci-current-engine]
   pull_request:
     branches: [main]
 
@@ -53,7 +53,7 @@ jobs:
         run: mypy src
 
   smoke:
-    name: Smoke / V7.1 package and architecture
+    name: Smoke / current package and architecture
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -73,19 +73,30 @@ jobs:
 
       - name: Import and architecture smoke test
         run: python - <<'PY'
-          from myai import AIEngine, AdaptiveModelRouter, ChatRequest, CodeIntelligenceIndex, Document
-          from myai.agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact, JudgeVerdict
-          from myai.model_router import RoutingRequest
+          from myai import (
+              AIEngine,
+              AdaptiveModelRouter,
+              ChatRequest,
+              CodeIntelligenceIndex,
+              Document,
+              ExecutionBudget,
+              JudgeVerdict,
+              RecursiveAgentGraph,
+              RoutingRequest,
+              TaskNode,
+              WorkArtifact,
+              run_architecture_benchmark,
+          )
 
           ai = AIEngine()
           added = ai.add_document(Document(source="ci.txt", text="Paris is the capital of France."))
           assert added == 1
           result = ai.generate(ChatRequest(message="What is the capital of France?"))
-          assert result.version == "v7.1"
+          assert result.version == "v9.1"
           assert result.text
 
           decision = AdaptiveModelRouter().choose(
-              RoutingRequest(task_kind="research", complexity=0.9, uncertainty=0.8)
+              RoutingRequest(task_kind="research", complexity=0.9, uncertainty=0.9)
           )
           assert decision.tier == "frontier"
           assert decision.allow_parallel is True
@@ -103,5 +114,12 @@ jobs:
           graph = RecursiveAgentGraph(ExecutionBudget(max_depth=2, max_nodes=4))
           graph_result = graph.run(TaskNode("root", "smoke"), decompose=decompose, worker=worker, judge=judge)
           assert graph_result.confidence == 0.9
+
+          benchmark = run_architecture_benchmark(repository_root=".")
+          assert benchmark.results
+          for score, evidence in benchmark.results.values():
+              assert score >= 0.8 or evidence[0] == "unmeasured-by-runner"
+
           print(result.model)
+          print(f"architecture_benchmark_ms={benchmark.elapsed_ms:.2f}")
           PY
