@@ -1,4 +1,4 @@
-"""MY-AI V5 public package."""
+"""MY-AI V6 public package."""
 
 from .engine import AIEngine
 from .knowledge import (
