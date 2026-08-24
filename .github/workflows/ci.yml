@@ -74,6 +74,7 @@ jobs:
         run: python - <<'PY'
           from myai import AIEngine, AdaptiveModelRouter, ChatRequest, CodeIntelligenceIndex, Document
           from myai.agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact, JudgeVerdict
+          from myai.model_router import RoutingRequest
 
           ai = AIEngine()
           added = ai.add_document(Document(source="ci.txt", text="Paris is the capital of France."))
@@ -82,9 +83,11 @@ jobs:
           assert result.version == "v7"
           assert result.text
 
-          decision = AdaptiveModelRouter().choose({
-              "task_kind": "research",
-          }) if False else None
+          decision = AdaptiveModelRouter().choose(
+              RoutingRequest(task_kind="research", complexity=0.9, uncertainty=0.8)
+          )
+          assert decision.tier == "frontier"
+          assert decision.allow_parallel is True
           assert CodeIntelligenceIndex() is not None
 
           def decompose(node, budget):
