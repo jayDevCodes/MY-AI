@@ -94,9 +94,8 @@ class AIEngine:
         )
 
     def code_source_context(self, query: str, *, limit: int = 5) -> tuple[dict[str, object], ...]:
-        if not self.code_context(query, limit=limit):
-            return ()
-        return self.code_index.read_context(query, limit=limit)
+        """Return compact source slices for the most relevant code symbols."""
+        return self.code_index.read_context(query, limit=limit) if self.code_context(query, limit=limit) else ()
 
     def route(self, request: ChatRequest, retrieved_count: int = 0) -> RoutingDecision:
         plan = self.cognitive.plan(request.message, retrieved_count)
@@ -199,6 +198,15 @@ class AIEngine:
                     ChatMessage(
                         role="system",
                         content="Relevant repository symbols:\n" + "\n".join(map(str, code_map)),
+                    )
+                )
+            source_context = self.code_source_context(message, limit=min(self.settings.code_context_limit, 5))
+            if source_context:
+                messages.append(
+                    ChatMessage(
+                        role="system",
+                        content="Relevant repository source slices. Modify only after inspecting these exact ranges:\n"
+                        + "\n\n".join(map(str, source_context)),
                     )
                 )
         messages.extend(history)
