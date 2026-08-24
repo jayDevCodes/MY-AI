@@ -143,8 +143,10 @@ class SQLiteVectorStore:
         for _, source, index, text, metadata_json, raw_embedding in rows:
             vector = np.frombuffer(raw_embedding, dtype=np.float32)
             vector_norm = float(np.linalg.norm(vector))
-            score = 0.0 if query_norm == 0 or vector_norm == 0 else float(
-                np.dot(query_vector, vector) / (query_norm * vector_norm)
+            score = (
+                0.0
+                if query_norm == 0 or vector_norm == 0
+                else float(np.dot(query_vector, vector) / (query_norm * vector_norm))
             )
             scored.append(
                 RetrievedChunk(
