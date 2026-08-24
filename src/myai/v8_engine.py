@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
+from datetime import datetime, timezone
 
 from .agent_runtime import AgentRuntimeResult
 from .engine import AIEngine
-from .repository_twin import CausalRepositoryTwin, ImpactSlice
+from .repository_twin import CausalRepositoryTwin
 from .schemas import ChatMessage
 from .self_healing import CausalDiagnosis, CausalErrorEngine, RepairMemory, RepairMemoryRecord
 
@@ -90,7 +91,7 @@ class V8AIEngine(AIEngine):
                 patch_summary=patch_summary,
                 validation=validation,
                 success=success,
-                timestamp=diagnosis.primary_frame.path if diagnosis.primary_frame else "runtime",
+                timestamp=datetime.now(timezone.utc).isoformat(),
                 evidence=diagnosis.evidence,
             )
         )
