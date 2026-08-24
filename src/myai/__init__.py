@@ -17,6 +17,7 @@ from .knowledge import (
     SQLiteVectorStore,
     chunk_text,
 )
+from .memory_lifecycle import MemoryLifecycleConfig, MemoryLifecycleManager
 from .memory_store import CognitiveMemoryStore
 from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .provider_pool import ModelEndpoint, TieredModelPool
@@ -66,6 +67,8 @@ __all__ = [
     "InMemoryKnowledgeStore",
     "MemoryItem",
     "MemoryKind",
+    "MemoryLifecycleConfig",
+    "MemoryLifecycleManager",
     "ModelEndpoint",
     "MultiModelAgentRuntime",
     "ProgramEdge",
