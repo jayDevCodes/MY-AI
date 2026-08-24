@@ -1,4 +1,4 @@
-name: V7 CI
+name: V7.1 CI
 
 on:
   push:
@@ -12,6 +12,7 @@ permissions:
 env:
   MYAI_EMBEDDING_PROVIDER: deterministic
   MYAI_KNOWLEDGE_DB_PATH: /tmp/my-ai-knowledge.sqlite3
+  MYAI_AGENT_MODE: auto
   MYAI_CODE_INDEX_ENABLED: true
 
 jobs:
@@ -52,7 +53,7 @@ jobs:
         run: mypy src
 
   smoke:
-    name: Smoke / V7 package and architecture
+    name: Smoke / V7.1 package and architecture
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -80,7 +81,7 @@ jobs:
           added = ai.add_document(Document(source="ci.txt", text="Paris is the capital of France."))
           assert added == 1
           result = ai.generate(ChatRequest(message="What is the capital of France?"))
-          assert result.version == "v7"
+          assert result.version == "v7.1"
           assert result.text
 
           decision = AdaptiveModelRouter().choose(
