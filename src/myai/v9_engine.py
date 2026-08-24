@@ -10,9 +10,9 @@ from .v8_engine import V8AIEngine
 
 
 class V9AIEngine(V8AIEngine):
-    """V9 cognitive mesh over the V8 causal repository twin."""
+    """V9.1 cognitive mesh with shared cognitive state and state-aware agents."""
 
-    version = "v9.0"
+    version = "v9.1"
 
     def __init__(self) -> None:
         super().__init__()
@@ -59,7 +59,7 @@ class V9AIEngine(V8AIEngine):
             ChatMessage(
                 role="system",
                 content=(
-                    "You are MY-AI V9 repair specialist. Use the program graph and runtime evidence as hard localization constraints. "
+                    "You are MY-AI V9.1 repair specialist. Use the program graph, runtime evidence, and shared cognitive state as hard context constraints. "
                     "Do not reread unrelated files. Preserve verified code and propose the smallest causally justified repair."
                 ),
             ),
@@ -74,8 +74,7 @@ class V9AIEngine(V8AIEngine):
                     f"PROGRAM EDGES: {program.edges}\n"
                     f"SOURCE CONTEXT: {program.source_context}\n"
                     f"RUNTIME NEIGHBORHOOD: {trace_events}\n"
-                    f"BEST HISTORICAL STRATEGY: {strategy}\n"
-                    f"EVIDENCE: {' | '.join(diagnosis.evidence)}"
+                    f"BEST HISTORICAL STRATEGY: {strategy}"
                 ),
             ),
         )
