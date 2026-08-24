@@ -1,89 +1,43 @@
 # MY-AI
 
-## V9 — Cognitive Mesh + Self-Evolving Repository Intelligence
+## V10 — Cognitive Mesh + Self-Healing Runtime
 
-MY-AI V9 extends V8's causal repository twin into a unified cognitive mesh for repository reasoning, targeted debugging, runtime evidence and evidence-gated self-evolution.
+MY-AI V10 extends V9.1 with a bounded self-healing runtime on top of the cognitive mesh. The system keeps the repository/program/causal graphs, persistent runtime traces, recursive multi-model workers, capability ledger, and evidence-gated evolution while adding failure signatures, bounded reproduction, repair episodes, controlled fault injection, and stable-code health metadata.
 
-### V9 architecture
+### V10 architecture
 
 ```text
 request / failure
   -> cognitive routing
   -> unified program graph
-       -> structure
-       -> calls
-       -> data-flow references
-       -> control-flow regions
+       -> structure / calls / data-flow / control-flow
   -> causal repository twin
-       -> dependency impact
-       -> source slices
+       -> dependency impact / source slices
   -> runtime trace graph
-       -> exception/state events
-       -> causal links
-  -> recursive multi-model workers
-  -> independent judge
-  -> targeted validation
-  -> evolution memory
-       -> strategy scores
-       -> reusable lessons
-       -> promotion gating
+       -> state / exception / causal links
+  -> failure signature memory
+  -> bounded reproduction
+  -> recursive repair workers + independent judge
+  -> sandbox / validation boundary
+  -> fault-injection self-tests
+  -> stable-code health map
+  -> verified strategy / capability ledger
 ```
 
-### Unified Program Graph
+### Self-healing principles
 
-`ProgramGraph` adds a repository-level intermediate representation over the persistent code index. Instead of treating files as isolated text blobs, V9 keeps compact nodes/edges for declarations, calls, data-flow references and control-flow regions. `program_slice()` returns only the local graph neighborhood and matching source ranges needed for a task.
+1. Detect before repairing.
+2. Reproduce before trusting a hypothesis whenever possible.
+3. Use the smallest causally relevant context; preserve verified code.
+4. Keep retries and repair attempts bounded.
+5. Never auto-promote code from the repair runtime; promotion remains validation-gated.
+6. Convert verified repair experience into reusable memory and regression evidence.
 
-This follows the current repository-agent direction represented by RPG and RPG-Encoder, which use persistent repository graphs to unify structure, semantics and dependencies and evolve the representation incrementally rather than repeatedly re-reading an entire codebase. RPG-Encoder reports large maintenance-overhead reductions and strong repository localization results on SWE-bench evaluations. 
+### Runtime controls
 
-### Runtime Trace Graph
-
-`RuntimeTraceGraph` stores compact exception/state events and causal links in `data/runtime_trace.jsonl`. The graph survives restarts, so future diagnosis can reuse runtime evidence instead of rediscovering the same sequence of events.
-
-### Self-evolution loop
-
-`EvolutionMemory` records task strategy, correctness, latency, token use and lessons. `EvolutionBenchmark` ranks strategies and only promotes a candidate when it is successful and materially better than the baseline. This is deliberately evidence-gated: memory can guide future strategy selection, but it cannot replace execution evidence.
-
-Recent 2026 research on self-evolving coding agents emphasizes executable feedback, repository context and coding trajectories as the core evidence sources for safe improvement. EvoCodeBench explicitly evaluates correctness together with efficiency and improvement over repeated attempts. 
-
-### V9 public engine
-
-```python
-from myai import AIEngine
-
-ai = AIEngine()  # V9 by default
-```
-
-Legacy V7.1 and V8 engines remain importable for compatibility.
-
-### Targeted repair context
-
-```python
-diagnosis = ai.diagnose_failure(traceback_text)
-repair_context = ai.repair_context_v9(traceback_text)
-program_slice = ai.program_slice("refresh_token")
-```
-
-The repair specialist receives the failure hypothesis, graph slice, relevant source ranges, nearby runtime events and the best historically validated strategy. Unrelated files are not required for the repair context.
-
-### Local setup
-
-```bash
-./scripts/setup.sh
-source .venv/bin/activate
-cp .env.example .env
-pytest
-```
-
-Runtime dependencies are listed in `requirements.txt`; development/CI dependencies are in `requirements-dev.txt`.
-
-### Persistent state
-
-- `data/knowledge.sqlite3` — semantic knowledge
-- `data/code_index.json` — freshness-aware code index
-- `data/repair_memory.jsonl` — validated repair experience
-- `data/runtime_trace.jsonl` — runtime events and causal links
-- `data/evolution_memory.jsonl` — strategy/evolution records
-
-### Research grounding
-
-V9 deliberately combines repository graphs, fine-grained program slices, executable runtime evidence and self-evolving memory rather than relying on any one technique. Current research shows memory remains task-dependent, so V9 keeps multiple evidence channels and validates promotion through actual outcomes instead of assuming that stored memory is universally reliable.
+- `MYAI_SELF_HEALING_ENABLED=true`
+- `MYAI_SELF_HEALING_MAX_REPAIR_ATTEMPTS=2`
+- `MYAI_SELF_HEALING_REPRODUCTION_TIMEOUT_SECONDS=30`
+- `MYAI_FAILURE_SIGNATURE_PATH=data/failure_signatures.jsonl`
+- `MYAI_REPAIR_EPISODE_PATH=data/repair_episodes.jsonl`
+- `MYAI_CODE_HEALTH_PATH=data/code_health.json`
