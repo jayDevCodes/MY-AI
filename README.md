@@ -1,59 +1,66 @@
 # MY-AI
 
-## V7 — Recursive Agent Graph
+## V7.1 — Recursive Multi-Model Agent System
 
-MY-AI V7 keeps the V5 semantic retrieval/persistent-memory foundation and the V6 verification layer, then adds an adaptive hierarchical architecture for complex work.
+MY-AI V7.1 keeps the V5 semantic retrieval/persistent-memory foundation and V6 cognitive verification, then makes the V7 architecture executable across multiple model tiers.
 
-### V7 architecture
+### V7.1 architecture
 
 ```text
 request
   -> cognitive classification
-  -> adaptive model routing
-  -> hierarchical task graph
-       -> specialist branches in parallel
-       -> structured WorkArtifacts
-       -> local synthesis
-       -> independent judge
-       -> retry only failed node(s)
+  -> adaptive tier selection
+  -> recursive task graph
+       -> specialist workers on fast/balanced/frontier models
+       -> compact WorkArtifacts
+       -> independent frontier judge
+       -> retry only failed branch
   -> final verification
   -> persistent memory
 ```
 
-V7 deliberately avoids replaying a whole repository or conversation to every worker. Agents exchange compact structured artifacts containing output, findings, evidence, confidence, and open questions. Execution is bounded by depth, node, parallelism, and retry budgets to prevent runaway recursion.
+The runtime now supports three separately configurable model tiers. Each tier can point to its own OpenAI-compatible endpoint/model, so a planner, specialist, critic, and judge can run on different models instead of pretending that one model did every job.
 
-### Adaptive model routing
+### Context engineering
 
-`AdaptiveModelRouter` selects `fast`, `balanced`, or `frontier` tiers from task type, complexity, uncertainty, risk, context size, and latency requirements. The policy is model-vendor agnostic so different local or remote providers can be attached later.
+Agents exchange structured artifacts instead of replaying their full conversation or repository context:
+
+```text
+WorkArtifact
+  task_id
+  role
+  output
+  confidence
+  findings
+  evidence
+  open_questions
+  children
+```
+
+This keeps detailed exploration local to the worker and sends only distilled work to the next stage.
+
+### Recursive execution guarantees
+
+Execution is bounded by maximum depth, node count, parallel workers, and retries. Cycles are detected. When a judge rejects a result, only that node is retried with judge feedback rather than restarting the whole graph.
 
 ### Code Intelligence
 
-`CodeIntelligenceIndex` builds a lightweight Python AST/symbol index. Queries retrieve only relevant files, classes, functions, line ranges, and parents instead of repeatedly loading the complete repository. This provides the foundation for persistent project understanding and future code-graph traversal.
+`CodeIntelligenceIndex` builds a lightweight Python AST/symbol graph. Coding tasks can retrieve a narrow set of relevant files, classes, functions, parents, and line ranges rather than repeatedly loading the entire repository.
 
 ```text
 repository
   -> AST
-  -> symbols/imports
+  -> symbols + imports
   -> searchable code graph
-  -> narrow context for the coding agent
+  -> narrow context
+  -> coding specialist
 ```
 
-### Recursive execution
+### Real model configuration
 
-```text
-Master Task
-  ├─ Research Agent
-  ├─ Coding Agent
-  └─ Reasoning Agent
-       ↓
-structured artifacts
-       ↓
-Judge
-  ├─ pass -> synthesize
-  └─ fail -> retry only failed branch
-```
+Set `MYAI_FAST_MODEL_PROVIDER`, `MYAI_BALANCED_MODEL_PROVIDER`, and `MYAI_FRONTIER_MODEL_PROVIDER` to `compatible` and provide the endpoint/model/key for each tier. Local mode remains deterministic and does not require a network model.
 
-The recursion is bounded and cycle-aware. Independent branches can run in parallel, while dependent synthesis happens after their artifacts are available.
+`MYAI_AGENT_MODE=auto` uses the recursive runtime for reasoning, research, and coding tasks; use `always` to force agent execution for every request.
 
 ### Local setup
 
@@ -66,24 +73,12 @@ pytest
 
 Runtime dependencies are listed in `requirements.txt`; development/CI dependencies are in `requirements-dev.txt`.
 
-### Embeddings and knowledge
+### Semantic embeddings
 
-Sentence Transformers is the default embedding provider with `sentence-transformers/all-MiniLM-L6-v2`. The first local run downloads the embedding model into the normal model cache. `MYAI_EMBEDDING_DEVICE` supports `cpu`, `cuda`, `mps`, or automatic selection.
-
-Knowledge is persisted in `data/knowledge.sqlite3` by default. The `data/` directory is intentionally ignored by Git because it is runtime state.
+Sentence Transformers is the default embedding provider with `sentence-transformers/all-MiniLM-L6-v2`. The first local run downloads the embedding model into the normal model cache. The embedding device can be selected with `MYAI_EMBEDDING_DEVICE` (`cpu`, `cuda`, `mps`, or blank for automatic selection).
 
 For CI and deterministic tests, set `MYAI_EMBEDDING_PROVIDER=deterministic` to avoid downloading model weights.
 
-### V7 runtime controls
+### Knowledge database
 
-- `MYAI_COGNITIVE_VERIFICATION=true|false`
-- `MYAI_COGNITIVE_MAX_RETRIES=1`
-- `MYAI_AGENT_MAX_DEPTH=3`
-- `MYAI_AGENT_MAX_NODES=32`
-- `MYAI_AGENT_MAX_PARALLEL=4`
-- `MYAI_AGENT_MAX_RETRIES=1`
-- `MYAI_CODE_INDEX_ENABLED=true|false`
-- `MYAI_CODE_INDEX_ROOT=.`
-- `MYAI_CODE_CONTEXT_LIMIT=8`
-
-The model provider remains pluggable through the existing provider interface. V7's orchestration layer is designed to combine local models, fast models, and frontier models rather than locking the system to one vendor.
+Knowledge is persisted in `data/knowledge.sqlite3` by default. The `data/` directory is intentionally ignored by Git because it is runtime state.
