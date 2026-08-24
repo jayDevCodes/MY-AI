@@ -4,8 +4,10 @@ from hashlib import sha256
 
 from .capability_benchmark import CapabilityBenchmark, CapabilitySnapshot
 from .capability_ledger import CapabilityLedger
+from .cognitive_compute import CognitiveComputeController, CognitiveComputePolicy
 from .evolution import EvolutionMemory, EvolutionRecord, StrategyScore
 from .graph_v9 import ProgramGraph, ProgramSlice
+from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .runtime_trace import RuntimeTraceGraph
 from .schemas import ChatMessage
 from .v8_engine import V8AIEngine
@@ -23,6 +25,10 @@ class V9AIEngine(V8AIEngine):
         self.evolution_memory = EvolutionMemory(self.settings.evolution_memory_path)
         self.capability_ledger = CapabilityLedger(self.settings.capability_ledger_path)
         self.capability_benchmark = CapabilityBenchmark()
+        self.compute_controller = CognitiveComputeController(
+            ledger=self.capability_ledger,
+            strategy_scores=self.strategy_scores(limit=8),
+        )
         self._refresh_program_graph()
 
     def _refresh_program_graph(self) -> None:
@@ -44,6 +50,15 @@ class V9AIEngine(V8AIEngine):
     def best_strategy(self) -> str | None:
         return self.evolution_memory.best_strategy()
 
+    def compute_policy(self, request: RoutingRequest) -> CognitiveComputePolicy:
+        """Use measured capability gaps and historical strategy evidence to size bounded compute."""
+        decision = AdaptiveModelRouter().choose(request)
+        controller = CognitiveComputeController(
+            ledger=self.capability_ledger,
+            strategy_scores=self.strategy_scores(limit=8),
+        )
+        return controller.policy_for(request, decision)
+
     def record_generation_experience(
         self,
         *,
@@ -63,6 +78,10 @@ class V9AIEngine(V8AIEngine):
                 latency_ms=max(0.0, latency_ms),
                 lessons=("verified" if success else "verification-failed",),
             )
+        )
+        self.compute_controller = CognitiveComputeController(
+            ledger=self.capability_ledger,
+            strategy_scores=self.strategy_scores(limit=8),
         )
 
     def repair_context_v9(self, traceback_text: str) -> tuple[ChatMessage, ...]:
@@ -117,4 +136,9 @@ class V9AIEngine(V8AIEngine):
             results=results,
             notes=notes,
         )
-        return self.capability_ledger.record(snapshot)
+        recorded = self.capability_ledger.record(snapshot)
+        self.compute_controller = CognitiveComputeController(
+            ledger=self.capability_ledger,
+            strategy_scores=self.strategy_scores(limit=8),
+        )
+        return recorded
