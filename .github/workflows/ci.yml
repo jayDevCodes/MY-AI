@@ -2,7 +2,7 @@ name: MY-AI CI
 
 on:
   push:
-    branches: [main, v6-cognitive-core, v7-recursive-agent-graph, fix/v10-ci-current-engine]
+    branches: [main, v6-cognitive-core, v7-recursive-agent-graph, fix/v10-ci-current-engine, v10-self-healing-runtime]
   pull_request:
     branches: [main]
 
@@ -14,6 +14,7 @@ env:
   MYAI_KNOWLEDGE_DB_PATH: /tmp/my-ai-knowledge.sqlite3
   MYAI_AGENT_MODE: auto
   MYAI_CODE_INDEX_ENABLED: true
+  MYAI_SELF_HEALING_ENABLED: true
 
 jobs:
   test:
@@ -53,7 +54,7 @@ jobs:
         run: mypy src
 
   smoke:
-    name: Smoke / current package and architecture
+    name: Smoke / V10 current package and architecture
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -89,10 +90,11 @@ jobs:
           )
 
           ai = AIEngine()
+          assert ai.version == "v10.0"
           added = ai.add_document(Document(source="ci.txt", text="Paris is the capital of France."))
           assert added == 1
           result = ai.generate(ChatRequest(message="What is the capital of France?"))
-          assert result.version == "v9.1"
+          assert result.version == "v10.0"
           assert result.text
 
           decision = AdaptiveModelRouter().choose(

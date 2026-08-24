@@ -8,20 +8,20 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
     model_provider: str = "local"
-    model_name: str = "placeholder-v9"
+    model_name: str = "placeholder-v10"
     model_base_url: str = "http://localhost:11434"
     model_api_key: str = ""
     model_timeout_seconds: float = 60.0
     fast_model_provider: str = "local"
-    fast_model_name: str = "placeholder-v9-fast"
+    fast_model_name: str = "placeholder-v10-fast"
     fast_model_base_url: str = "http://localhost:11434"
     fast_model_api_key: str = ""
     balanced_model_provider: str = "local"
-    balanced_model_name: str = "placeholder-v9-balanced"
+    balanced_model_name: str = "placeholder-v10-balanced"
     balanced_model_base_url: str = "http://localhost:11434"
     balanced_model_api_key: str = ""
     frontier_model_provider: str = "local"
-    frontier_model_name: str = "placeholder-v9-frontier"
+    frontier_model_name: str = "placeholder-v10-frontier"
     frontier_model_base_url: str = "http://localhost:11434"
     frontier_model_api_key: str = ""
     memory_max_messages: int = 20
@@ -49,11 +49,17 @@ class Settings(BaseSettings):
     runtime_trace_path: str = "data/runtime_trace.jsonl"
     evolution_memory_path: str = "data/evolution_memory.jsonl"
     capability_ledger_path: str = "data/capability_ledger.json"
+    failure_signature_path: str = "data/failure_signatures.jsonl"
+    repair_episode_path: str = "data/repair_episodes.jsonl"
+    code_health_path: str = "data/code_health.json"
     evolution_min_promotion_delta: float = 0.05
+    self_healing_enabled: bool = True
+    self_healing_max_repair_attempts: int = 2
+    self_healing_reproduction_timeout_seconds: float = 30.0
     system_prompt: str = (
-        "You are MY-AI V9.1. Operate as an evidence-first cognitive mesh. "
-        "Use the unified program graph, runtime traces, repository memory, and structured specialist artifacts. "
-        "Never invent sources, tool usage, verification, or repository facts. "
+        "You are MY-AI V10.0. Operate as an evidence-first cognitive mesh with a bounded self-healing runtime. "
+        "Use the unified program graph, runtime traces, repository memory, failure signatures, stable-code health, "
+        "and structured specialist artifacts. Never invent sources, tool usage, verification, or repository facts. "
         "Prefer the smallest sufficient context and preserve already-verified work. "
         "When strategies disagree, surface uncertainty and request stronger evidence rather than averaging guesses."
     )

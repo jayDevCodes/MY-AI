@@ -10,10 +10,13 @@ from .cognitive import CognitiveCore, VerificationResult
 from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .context_contract import build_cognitive_context
 from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord
+from .fault_lab import FaultInjectionLab
 from .memory_lifecycle import MemoryLifecycleManager
 from .model_router import AdaptiveModelRouter, RoutingRequest
 from .repository_twin import CausalRepositoryTwin
 from .runtime_trace import RuntimeTraceGraph, TraceEvent
+from .self_healing_runtime import FailureSignatureStore, SelfHealingRuntime
+from .stability import CodeHealth, CodeHealthStore
 
 
 @dataclass(frozen=True)
@@ -92,11 +95,27 @@ def run_architecture_benchmark(
     trace.link("benchmark-cause", "benchmark-error", "caused")
     neighborhood = trace.neighborhood("benchmark-error")
     affected = twin.affected_files("src/myai/engine.py")
-    record(
-        "causal-trace-diagnosis",
-        bool(neighborhood) and any(event.kind == "exception" for event in neighborhood) and bool(affected),
-        f"trace_events={len(neighborhood)};affected_files={len(affected)}",
+    record("causal-trace-diagnosis", bool(neighborhood) and any(event.kind == "exception" for event in neighborhood) and bool(affected), f"trace_events={len(neighborhood)};affected_files={len(affected)}")
+
+    signatures = FailureSignatureStore("/tmp/myai-v10-failure-signatures.jsonl")
+    healing = SelfHealingRuntime(episode_path="/tmp/myai-v10-repair-episodes.jsonl", signature_store=signatures)
+    signature = healing.signature("TypeError", "database timeout 123", "AIEngine.generate")
+    episode = healing.verified_repair(
+        signature=signature,
+        reproduce=lambda: (True, "synthetic reproduction"),
+        validate=lambda: True,
+        lesson="verified bounded recovery",
     )
+    record("self-healing-runtime", episode.status == "verified" and bool(signatures.similar(signature)), f"status={episode.status};attempts={episode.attempts}")
+
+    state_map = {"healthy": True}
+    fault = FaultInjectionLab()
+    fault_result = fault.run(fault.simple_toggle(state_map, "healthy"), detector=lambda: not state_map["healthy"])
+    record("fault-injection-recovery", fault_result.detected and fault_result.recovered and fault_result.verified, f"detected={fault_result.detected};recovered={fault_result.recovered};verified={fault_result.verified}")
+
+    health_store = CodeHealthStore("/tmp/myai-v10-code-health.json")
+    health_store.upsert(CodeHealth("stable_symbol", 0.99, 0.99, 0.0, 0.01, 0.05, "2026-08-25T00:00:00+00:00"))
+    record("stable-code-inspection", health_store.inspection_mode("stable_symbol") == "reuse", f"mode={health_store.inspection_mode('stable_symbol')}")
 
     state.observe("observation-a")
     for index_value in range(20):

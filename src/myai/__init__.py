@@ -1,4 +1,4 @@
-"""MY-AI V9.1 public package."""
+"""MY-AI V10 public package with self-healing runtime controls."""
 
 from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
@@ -11,6 +11,7 @@ from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .context_contract import CognitiveContext, build_cognitive_context
 from .engine import AIEngine as LegacyAIEngine
 from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord, StrategyScore
+from .fault_lab import FaultCase, FaultInjectionLab, FaultResult
 from .graph_v9 import ProgramEdge, ProgramGraph, ProgramNode, ProgramSlice
 from .knowledge import (
     Document,
@@ -35,13 +36,17 @@ from .self_healing import (
     RepairMemory,
     RepairMemoryRecord,
 )
+from .self_healing_runtime import FailureSignature, FailureSignatureStore, RepairEpisode, SelfHealingRuntime
+from .stability import CodeHealth, CodeHealthStore
 from .v8_engine import V8AIEngine
 from .v9_engine import V9AIEngine
+from .v10_engine import V10AIEngine
 
-AIEngine = V9AIEngine
+AIEngine = V10AIEngine
 
 __all__ = [
     "AIEngine",
+    "V10AIEngine",
     "V9AIEngine",
     "V8AIEngine",
     "LegacyAIEngine",
@@ -57,6 +62,8 @@ __all__ = [
     "ChatMessage",
     "ChatRequest",
     "ChatResponse",
+    "CodeHealth",
+    "CodeHealthStore",
     "CognitiveComputeController",
     "CognitiveComputePolicy",
     "CognitiveContext",
@@ -65,11 +72,22 @@ __all__ = [
     "CodeFile",
     "CodeIntelligenceIndex",
     "CodeSymbol",
+    "CausalDiagnosis",
+    "CausalErrorEngine",
+    "CausalRepositoryTwin",
     "Document",
     "ExecutionBudget",
     "EvolutionBenchmark",
     "EvolutionMemory",
     "EvolutionRecord",
+    "FailureEvent",
+    "FailureFrame",
+    "FailureSignature",
+    "FailureSignatureStore",
+    "FaultCase",
+    "FaultInjectionLab",
+    "FaultResult",
+    "ImpactSlice",
     "InMemoryKnowledgeStore",
     "MemoryItem",
     "MemoryKind",
@@ -83,27 +101,23 @@ __all__ = [
     "ProgramNode",
     "ProgramSlice",
     "RecursiveAgentGraph",
+    "RepairEpisode",
+    "RepairMemory",
+    "RepairMemoryRecord",
     "RetrievedChunk",
     "RoutingDecision",
     "RoutingRequest",
+    "RuntimeTraceGraph",
     "SQLiteVectorStore",
     "StrategyScore",
+    "SelfHealingRuntime",
     "TaskNode",
     "TieredModelPool",
     "TraceCausalLink",
     "TraceEvent",
-    "RuntimeTraceGraph",
-    "WorkArtifact",
-    "CausalRepositoryTwin",
-    "ImpactSlice",
     "TwinEdge",
     "TwinNode",
-    "CausalDiagnosis",
-    "CausalErrorEngine",
-    "FailureEvent",
-    "FailureFrame",
-    "RepairMemory",
-    "RepairMemoryRecord",
+    "WorkArtifact",
     "benchmark_cases",
     "build_cognitive_context",
     "build_model_report",
