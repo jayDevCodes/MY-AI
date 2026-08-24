@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from pathlib import Path
+from time import perf_counter
 
 from .agent_graph import ExecutionBudget
 from .agent_runtime import MultiModelAgentRuntime
@@ -148,6 +149,36 @@ class AIEngine:
             state=self.cognitive_state,
         ).artifact.output
 
+    def _proven_strategy_hints(self) -> tuple[str, ...]:
+        provider = getattr(self, "strategy_scores", None)
+        if not callable(provider):
+            return ()
+        try:
+            return tuple(
+                f"{item.strategy} (success={item.success_rate:.2f}, score={item.mean_score:.2f})"
+                for item in provider(limit=3)
+            )
+        except (AttributeError, TypeError, ValueError):
+            return ()
+
+    def _record_generation_experience(
+        self,
+        *,
+        task: str,
+        strategy: str,
+        verification: VerificationResult,
+        latency_ms: float,
+    ) -> None:
+        recorder = getattr(self, "record_generation_experience", None)
+        if callable(recorder):
+            recorder(
+                task=task,
+                strategy=strategy,
+                success=verification.passed,
+                score=verification.score,
+                latency_ms=latency_ms,
+            )
+
     def _consolidate_memory_if_due(self) -> None:
         """Promote repeated verified episodes without mutating raw evidence."""
         if len(self.cognitive_state.memories) == 0 or len(self.cognitive_state.memories) % 16 != 0:
@@ -159,6 +190,7 @@ class AIEngine:
                 existing.add((promotion.kind, promotion.content))
 
     def generate(self, request: ChatRequest) -> ChatResponse:
+        started = perf_counter()
         history = self._normalize_history(request.conversation)
         retrieved = self.retrieve(request.message)
         plan = self.cognitive.plan(request.message, len(retrieved))
@@ -242,6 +274,12 @@ class AIEngine:
         )
         self._consolidate_memory_if_due()
         self.memory_store.persist_state(self.cognitive_state)
+        self._record_generation_experience(
+            task=request.message,
+            strategy=self.cognitive_state.active_strategy or f"route:{routing.tier}:{plan.kind}",
+            verification=verification,
+            latency_ms=(perf_counter() - started) * 1000.0,
+        )
         self.memory.extend(history)
         self.memory.add(ChatMessage(role="user", content=request.message.strip()))
         self.memory.add(ChatMessage(role="assistant", content=text))
@@ -275,6 +313,7 @@ class AIEngine:
             observation_limit=6,
             capability_limit=8,
             world_limit=8,
+            strategy_hints=self._proven_strategy_hints(),
         )
         rendered_context = context.render()
         if rendered_context:
@@ -283,7 +322,8 @@ class AIEngine:
                     role="system",
                     content=(
                         "Bounded shared cognitive context. Use it as evidence-aware context, not ground truth; "
-                        "distinguish beliefs, memories and observations.\n" + rendered_context
+                        "distinguish beliefs, memories and observations. Proven strategies are historical signals, not guarantees.\n"
+                        + rendered_context
                     ),
                 )
             )
