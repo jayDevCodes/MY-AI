@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -46,7 +45,7 @@ class CodeIntelligenceIndex:
                     for alias in node.names
                 )
 
-        def visit(body: Iterable[ast.AST], parent: str | None = None) -> None:
+        def visit(body: list[ast.stmt], parent: str | None = None) -> None:
             for node in body:
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                     kind = "class" if isinstance(node, ast.ClassDef) else "function"
@@ -56,13 +55,13 @@ class CodeIntelligenceIndex:
                             kind=kind,
                             path=str(file_path),
                             line=node.lineno,
-                            end_line=getattr(node, "end_lineno", None),
+                            end_line=node.end_lineno,
                             parent=parent,
                         )
                     )
-                    visit(getattr(node, "body", ()), node.name)
+                    visit(node.body, node.name)
                 elif isinstance(node, (ast.If, ast.For, ast.While, ast.With, ast.Try)):
-                    visit(getattr(node, "body", ()), parent)
+                    visit(node.body, parent)
 
         visit(tree.body)
         code_file = CodeFile(
