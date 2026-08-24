@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from hashlib import sha256
-from time import perf_counter
 
 from .capability_benchmark import CapabilityBenchmark, CapabilitySnapshot
 from .capability_ledger import CapabilityLedger
@@ -119,7 +118,3 @@ class V9AIEngine(V8AIEngine):
             notes=notes,
         )
         return self.capability_ledger.record(snapshot)
-
-
-def _measure_elapsed_ms(start: float) -> float:
-    return (perf_counter() - start) * 1000.0
