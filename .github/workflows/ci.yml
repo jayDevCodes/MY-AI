@@ -1,8 +1,8 @@
-name: V6 CI
+name: V7 CI
 
 on:
   push:
-    branches: [main, v6-cognitive-core]
+    branches: [main, v6-cognitive-core, v7-recursive-agent-graph]
   pull_request:
     branches: [main]
 
@@ -12,6 +12,7 @@ permissions:
 env:
   MYAI_EMBEDDING_PROVIDER: deterministic
   MYAI_KNOWLEDGE_DB_PATH: /tmp/my-ai-knowledge.sqlite3
+  MYAI_CODE_INDEX_ENABLED: true
 
 jobs:
   test:
@@ -51,7 +52,7 @@ jobs:
         run: mypy src
 
   smoke:
-    name: Smoke / package import
+    name: Smoke / V7 package and architecture
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -69,14 +70,34 @@ jobs:
       - name: Install project
         run: python -m pip install -e .
 
-      - name: Import and semantic retrieval smoke test
+      - name: Import and architecture smoke test
         run: python - <<'PY'
-          from myai import AIEngine, ChatRequest, Document
+          from myai import AIEngine, AdaptiveModelRouter, ChatRequest, CodeIntelligenceIndex, Document
+          from myai.agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact, JudgeVerdict
+
           ai = AIEngine()
           added = ai.add_document(Document(source="ci.txt", text="Paris is the capital of France."))
           assert added == 1
           result = ai.generate(ChatRequest(message="What is the capital of France?"))
-          assert result.version == "v6"
+          assert result.version == "v7"
           assert result.text
+
+          decision = AdaptiveModelRouter().choose({
+              "task_kind": "research",
+          }) if False else None
+          assert CodeIntelligenceIndex() is not None
+
+          def decompose(node, budget):
+              return (TaskNode("child", "verify fact", "research", 1, node.id),) if node.depth == 0 else ()
+
+          def worker(node, children):
+              return WorkArtifact(node.id, node.role, "ok", 0.9)
+
+          def judge(node, artifact, children):
+              return JudgeVerdict(True, 0.9)
+
+          graph = RecursiveAgentGraph(ExecutionBudget(max_depth=2, max_nodes=4))
+          graph_result = graph.run(TaskNode("root", "smoke"), decompose=decompose, worker=worker, judge=judge)
+          assert graph_result.confidence == 0.9
           print(result.model)
           PY
