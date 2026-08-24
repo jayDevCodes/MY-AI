@@ -2,7 +2,11 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from .config import get_settings
-from .embeddings import DeterministicEmbeddingModel, SentenceTransformerEmbeddingModel
+from .embeddings import (
+    DeterministicEmbeddingModel,
+    EmbeddingModel,
+    SentenceTransformerEmbeddingModel,
+)
 from .knowledge import Document, KnowledgeStore, RetrievedChunk, SQLiteVectorStore
 from .memory import ConversationMemory
 from .providers import get_provider
@@ -10,9 +14,9 @@ from .schemas import ChatMessage, ChatRequest, ChatResponse
 
 
 class AIEngine:
-    """V4 orchestration layer with semantic retrieval and persistent knowledge."""
+    """V5 orchestration layer with semantic retrieval and persistent knowledge."""
 
-    version = "v4"
+    version = "v5"
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -22,7 +26,7 @@ class AIEngine:
 
     def _build_knowledge_store(self) -> KnowledgeStore:
         if self.settings.embedding_provider.lower() == "deterministic":
-            embedder = DeterministicEmbeddingModel()
+            embedder: EmbeddingModel = DeterministicEmbeddingModel()
         else:
             embedder = SentenceTransformerEmbeddingModel(
                 self.settings.embedding_model_name,
@@ -67,13 +71,14 @@ class AIEngine:
         self,
         message: str,
         history: Sequence[ChatMessage],
-        retrieved: Sequence[RetrievedChunk],
+        retrieved: Sequence[RetrievedChunk] = (),
     ) -> list[ChatMessage]:
         system = ChatMessage(role="system", content=self.settings.system_prompt)
         context_messages: list[ChatMessage] = []
         if retrieved:
             context_lines = [
-                "Retrieved semantic knowledge context. Treat it as reference material and do not invent sources:"
+                "Retrieved semantic knowledge context. Treat it as reference material "
+                "and do not invent sources:"
             ]
             for item in retrieved:
                 context_lines.append(

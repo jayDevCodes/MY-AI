@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
     model_provider: str = "local"
-    model_name: str = "placeholder-v4"
+    model_name: str = "placeholder-v5"
     model_base_url: str = "http://localhost:11434"
     model_api_key: str = ""
     model_timeout_seconds: float = 60.0
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_device: str | None = None
     system_prompt: str = (
-        "You are MY-AI V4. Be accurate, explicit about uncertainty, "
+        "You are MY-AI V5. Be accurate, explicit about uncertainty, "
         "use retrieved knowledge when supplied, cite its source metadata when relevant, "
         "and never invent sources or claim tools were used when they were not."
     )
