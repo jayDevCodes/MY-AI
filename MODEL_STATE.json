@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "model_version": "v9.0",
+  "purpose": "Canonical baseline for the next MY-AI upgrade. Read this before changing architecture.",
+  "architecture": {
+    "core": "recursive multi-model cognitive mesh",
+    "model_routing": ["fast", "balanced", "frontier"],
+    "repository_representation": ["persistent symbol graph", "repository twin", "program graph", "call edges", "data-flow references", "control-flow edges"],
+    "runtime_evidence": ["persistent trace events", "causal links", "failure neighborhoods"],
+    "memory": ["semantic knowledge", "repair memory", "evolution memory", "capability ledger"],
+    "verification": ["specialist workers", "frontier judge", "targeted validation", "promotion gates"],
+    "self_improvement": ["strategy scoring", "baseline comparison", "capability deltas", "regression detection"]
+  },
+  "capability_dimensions": {
+    "reasoning": {"status": "implemented_not_fully_benchmarked", "score": null},
+    "coding": {"status": "implemented_not_fully_benchmarked", "score": null},
+    "repository_understanding": {"status": "implemented", "score": null},
+    "debugging": {"status": "implemented", "score": null},
+    "memory": {"status": "implemented_not_fully_benchmarked", "score": null},
+    "tool_use": {"status": "multi_model_provider_layer", "score": null},
+    "planning": {"status": "implemented", "score": null},
+    "verification": {"status": "implemented", "score": null},
+    "efficiency": {"status": "architecture_defined_not_fully_benchmarked", "score": null},
+    "self_improvement": {"status": "implemented_with_promotion_gates", "score": null}
+  },
+  "verified_evidence": [
+    "V8 causal repository twin and self-healing PR merged as PR #5",
+    "V9 program graph tests cover calls and control-flow localization",
+    "V9 runtime trace persistence test covers event retention and causal links",
+    "V9 evolution benchmark tests cover baseline-vs-candidate promotion",
+    "V9 capability ledger roundtrip/delta test added",
+    "incremental code-index freshness and targeted source context are retained from V8"
+  ],
+  "benchmark_protocol": {
+    "required_before_claiming_improvement": [
+      "fixed task set",
+      "same model/provider configuration",
+      "same tool budget where applicable",
+      "multiple runs for reliability",
+      "task success",
+      "regression rate",
+      "latency",
+      "tokens/cost",
+      "unnecessary context/code-read volume",
+      "memory transfer across episodes"
+    ],
+    "external_reference_directions": ["STATE-Bench", "EvoMemBench", "EvoAgentBench", "PAST-Bench"]
+  },
+  "known_limits": [
+    "No independent frontier-model quality claim has been established from this repository alone.",
+    "Fresh GitHub Actions execution is not guaranteed to be visible through the current integration at every commit.",
+    "Program/data/control-flow coverage is strongest for Python and should be extended to other languages before broad repo claims.",
+    "Self-evolution changes are evidence-gated; automatic model-weight training is not implemented."
+  ],
+  "next_upgrade_targets": [
+    "language-agnostic program/data/control-flow graph",
+    "real runtime instrumentation and automatic trace capture",
+    "sandbox patch execution with automatic rollback",
+    "longitudinal benchmark runner producing measured capability scores",
+    "ability-transfer memory and curriculum generation",
+    "model-vs-model and architecture-vs-architecture comparison harness"
+  ]
+}
