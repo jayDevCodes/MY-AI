@@ -6,16 +6,20 @@ from .capability_benchmark import CapabilityBenchmark, CapabilitySnapshot
 from .capability_ledger import CapabilityLedger
 from .cognitive_compute import CognitiveComputeController, CognitiveComputePolicy
 from .evolution import EvolutionMemory, EvolutionRecord, StrategyScore
+from .fault_lab import FaultCase, FaultInjectionLab, FaultResult
 from .graph_v9 import ProgramGraph, ProgramSlice
 from .model_report import ModelReport, build_model_report
 from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .runtime_trace import RuntimeTraceGraph
 from .schemas import ChatMessage
+from .self_healing import CausalDiagnosis, CausalErrorEngine, RepairMemory, RepairMemoryRecord
+from .self_healing_runtime import FailureSignature, FailureSignatureStore, RepairEpisode, SelfHealingRuntime
+from .stability import CodeHealth, CodeHealthStore
 from .v8_engine import V8AIEngine
 
 
 class V9AIEngine(V8AIEngine):
-    """V9.1 cognitive mesh with shared cognitive state and state-aware agents."""
+    """V9.1 cognitive mesh with bounded self-healing runtime controls."""
 
     version = "v9.1"
 
@@ -30,6 +34,13 @@ class V9AIEngine(V8AIEngine):
             ledger=self.capability_ledger,
             strategy_scores=self.strategy_scores(limit=8),
         )
+        self.failure_signatures = FailureSignatureStore(self.settings.failure_signature_path)
+        self.self_healing_runtime = SelfHealingRuntime(
+            episode_path=self.settings.repair_episode_path,
+            signature_store=self.failure_signatures,
+        )
+        self.code_health = CodeHealthStore(self.settings.code_health_path)
+        self.fault_lab = FaultInjectionLab()
         self._refresh_program_graph()
 
     def _refresh_program_graph(self) -> None:
@@ -125,6 +136,42 @@ class V9AIEngine(V8AIEngine):
                 ),
             ),
         )
+
+    def failure_signature(self, traceback_text: str) -> FailureSignature:
+        diagnosis = self.diagnose_failure(traceback_text)
+        symbol = diagnosis.primary_frame.symbol if diagnosis.primary_frame else ""
+        return self.self_healing_runtime.signature(diagnosis.error_type, diagnosis.message, symbol)
+
+    def inspection_mode(self, symbol: str) -> str:
+        return self.code_health.inspection_mode(symbol)
+
+    def record_code_health(self, health: CodeHealth) -> None:
+        self.code_health.upsert(health)
+
+    def run_repair_episode(
+        self,
+        traceback_text: str,
+        *,
+        reproduce,
+        validate,
+        lesson: str = "",
+    ) -> RepairEpisode:
+        """Record a bounded repair episode. Code promotion remains an external, verified step."""
+        diagnosis = self.diagnose_failure(traceback_text)
+        signature = self.self_healing_runtime.signature(
+            diagnosis.error_type,
+            diagnosis.message,
+            diagnosis.primary_frame.symbol if diagnosis.primary_frame else "",
+        )
+        return self.self_healing_runtime.verified_repair(
+            signature=signature,
+            reproduce=reproduce,
+            validate=validate,
+            lesson=lesson,
+        )
+
+    def run_fault_test(self, case: FaultCase, *, detector) -> FaultResult:
+        return self.fault_lab.run(case, detector=detector)
 
     def capability_baseline(self) -> dict[str, object]:
         return self.capability_ledger.baseline()
