@@ -21,13 +21,7 @@ class VerificationResult:
 
 
 class CognitiveCore:
-    """Deterministic orchestration policy for MY-AI V6.
-
-    The core does not replace the language model. It decides which cognitive
-    steps should happen around the model: classify, retrieve, generate and
-    verify. Keeping this layer model-agnostic lets OpenAI-compatible, local,
-    and future native providers share the same safety/quality pipeline.
-    """
+    """Deterministic orchestration policy for MY-AI V6."""
 
     def classify(self, message: str) -> TaskKind:
         text = message.casefold().strip()
@@ -45,7 +39,6 @@ class CognitiveCore:
         kind = self.classify(message)
         requires_retrieval = kind in {"research", "memory", "reasoning"} or retrieved_count > 0
         requires_verification = kind in {"research", "reasoning", "coding"}
-
         steps: list[str] = ["classify"]
         if requires_retrieval:
             steps.append("retrieve")
@@ -59,13 +52,13 @@ class CognitiveCore:
 
     def verify(self, answer: str, retrieved_count: int) -> VerificationResult:
         text = answer.strip()
+        lowered = text.casefold()
         issues: list[str] = []
         if not text:
             issues.append("empty_answer")
         if len(text) < 8:
             issues.append("answer_too_short")
-        if search(r"\b(I|we)\s+(used|searched|verified)\b", text.casefold()) and retrieved_count == 0:
+        if search(r"\b(?:i|we)\s+(?:used|searched|verified)\b", lowered) and retrieved_count == 0:
             issues.append("unsupported_tool_claim")
-
         score = max(0.0, 1.0 - 0.35 * len(issues))
         return VerificationResult(passed=not issues, score=score, issues=tuple(issues))
