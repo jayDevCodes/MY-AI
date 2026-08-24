@@ -1,15 +1,16 @@
 {
-  "schema_version": 3,
-  "model_version": "v10-capability-evidence",
+  "schema_version": 4,
+  "model_version": "v10-cognitive-compute",
   "purpose": "Canonical architecture and measurement baseline for evidence-driven MY-AI upgrades.",
   "architecture": {
-    "core": "recursive multi-model cognitive mesh with bounded cognitive context and persistent evidence-gated memory",
+    "core": "recursive multi-model cognitive mesh with bounded cognitive context, persistent evidence-gated memory, and capability-aware compute allocation",
     "model_routing": ["fast", "balanced", "frontier"],
+    "compute_control": ["capability-gap pressure", "uncertainty pressure", "risk pressure", "historical strategy reliability", "bounded execution budgets"],
     "repository_representation": ["persistent symbol graph", "repository twin", "program graph", "call edges", "data-flow references", "control-flow edges"],
     "runtime_evidence": ["persistent trace events", "causal links", "failure neighborhoods"],
     "memory": ["semantic knowledge", "typed cognitive memory", "persistent cognitive memory", "evidence-gated lifecycle", "repair memory", "evolution memory", "capability ledger"],
     "verification": ["specialist workers", "frontier judge", "targeted validation", "promotion gates", "deterministic capability checks"],
-    "self_improvement": ["strategy scoring", "verified strategy feedback", "baseline comparison", "capability deltas", "regression detection", "executable architecture benchmarks"]
+    "self_improvement": ["strategy scoring", "verified strategy feedback", "baseline comparison", "capability deltas", "regression detection", "executable architecture benchmarks", "compute-policy adaptation"]
   },
   "capability_dimensions": {
     "reasoning": {"status": "architecture_benchmarked", "score_source": "executable architecture evidence"},
@@ -31,11 +32,18 @@
     "unmeasured_provider_capabilities": ["tool_use"],
     "principle": "A numeric capability claim must come from executed evidence; architecture presence alone is not a score."
   },
+  "compute_policy": {
+    "entrypoint": "myai.CognitiveComputeController",
+    "inputs": ["capability ledger gap", "task uncertainty", "task risk", "historical strategy reliability", "routing decision"],
+    "outputs": ["reasoning depth", "parallelism", "retry budget", "verification passes", "preferred tier"],
+    "constraints": ["bounded depth", "bounded parallelism", "bounded retries", "never overrides provider-independent evidence requirements"],
+    "principle": "Use more compute when measured capability gaps or uncertainty justify it; avoid redundant exploration when verified strategies are reliable."
+  },
   "benchmark_protocol": {
     "required_before_claiming_improvement": ["fixed task set", "same model/provider configuration", "same tool budget where applicable", "multiple runs for reliability", "task success", "regression rate", "latency", "tokens/cost", "unnecessary context/code-read volume", "memory transfer across episodes", "persisted evidence for every numeric claim"],
     "current_executable_suite": ["frontier-routing", "recursive-agent-graph", "cross-episode-repair-memory", "trace-verification", "program-graph-localization", "causal-trace-diagnosis", "targeted-context", "strategy-promotion"],
     "external_reference_directions": ["STATE-Bench", "EvoMemBench", "EvoAgentBench", "PAST-Bench"]
   },
-  "known_limits": ["The deterministic runner measures architecture capabilities, not frontier-model task quality.", "Tool-use capability remains unmeasured by the provider-independent runner.", "Fresh GitHub Actions execution is not guaranteed to be visible through the current integration at every commit.", "Program/data/control-flow coverage is strongest for Python and should be extended to other languages before broad repo claims.", "Self-evolution changes remain evidence-gated; automatic model-weight training is not implemented."],
-  "next_upgrade_targets": ["provider-backed end-to-end benchmark harness", "capability-aware compute allocation using ledger + evolution evidence + adaptive routing", "real runtime instrumentation and automatic trace capture", "sandbox patch execution with automatic rollback", "tool-use benchmark with explicit capability boundaries", "longitudinal benchmark runner with repeated runs and confidence intervals", "ability-transfer memory and curriculum generation", "model-vs-model and architecture-vs-architecture comparison harness"]
+  "known_limits": ["The deterministic runner measures architecture capabilities, not frontier-model task quality.", "Tool-use capability remains unmeasured by the provider-independent runner.", "Fresh GitHub Actions execution is not guaranteed to be visible through the current integration at every commit.", "Program/data/control-flow coverage is strongest for Python and should be extended to other languages before broad repo claims.", "Compute policy is a bounded controller; it does not train model weights or guarantee task-level quality improvements.", "Self-evolution changes remain evidence-gated; automatic model-weight training is not implemented."],
+  "next_upgrade_targets": ["provider-backed end-to-end benchmark harness", "real runtime instrumentation and automatic trace capture", "sandbox patch execution with automatic rollback", "tool-use benchmark with explicit capability boundaries", "longitudinal benchmark runner with repeated runs and confidence intervals", "ability-transfer memory and curriculum generation", "model-vs-model and architecture-vs-architecture comparison harness", "predictive world-state and counterfactual simulation"]
 }

@@ -5,6 +5,7 @@ from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
 from .capability_benchmark import BenchmarkCase, CapabilityBenchmark
 from .capability_ledger import CapabilityLedger, CapabilityScore, CapabilitySnapshot
 from .capability_runner import BenchmarkRun, benchmark_cases, run_architecture_benchmark
+from .cognitive_compute import CognitiveComputePolicy, CognitiveComputeController
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
 from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .context_contract import CognitiveContext, build_cognitive_context
@@ -55,6 +56,8 @@ __all__ = [
     "ChatMessage",
     "ChatRequest",
     "ChatResponse",
+    "CognitiveComputeController",
+    "CognitiveComputePolicy",
     "CognitiveContext",
     "CognitiveMemoryStore",
     "CognitiveState",
