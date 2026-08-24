@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,7 +24,9 @@ class CodeFile:
 
 
 class CodeIntelligenceIndex:
-    """Lightweight AST index for narrow, repeatable code-context retrieval."""
+    """Persistent lightweight AST/symbol graph for narrow code-context retrieval."""
+
+    snapshot_version = 1
 
     def __init__(self) -> None:
         self.files: dict[str, CodeFile] = {}
@@ -111,3 +114,83 @@ class CodeIntelligenceIndex:
             }
             for symbol in self.search(query, limit=limit)
         )
+
+    def read_context(self, query: str, limit: int = 5, padding: int = 4) -> tuple[dict[str, object], ...]:
+        """Read only the source ranges belonging to matched symbols."""
+        contexts: list[dict[str, object]] = []
+        for symbol in self.search(query, limit=limit):
+            try:
+                lines = Path(symbol.path).read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+            start = max(1, symbol.line - padding)
+            end = min(len(lines), (symbol.end_line or symbol.line) + padding)
+            contexts.append(
+                {
+                    "path": symbol.path,
+                    "symbol": symbol.name,
+                    "start_line": start,
+                    "end_line": end,
+                    "text": "\n".join(lines[start - 1 : end]),
+                }
+            )
+        return tuple(contexts)
+
+    def save_snapshot(self, path: str | Path) -> None:
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "version": self.snapshot_version,
+            "files": [
+                {
+                    "path": code_file.path,
+                    "imports": list(code_file.imports),
+                    "symbols": [
+                        {
+                            "name": symbol.name,
+                            "kind": symbol.kind,
+                            "path": symbol.path,
+                            "line": symbol.line,
+                            "end_line": symbol.end_line,
+                            "parent": symbol.parent,
+                        }
+                        for symbol in code_file.symbols
+                    ],
+                }
+                for code_file in self.files.values()
+            ],
+        }
+        target.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+
+    def load_snapshot(self, path: str | Path) -> bool:
+        target = Path(path)
+        if not target.exists():
+            return False
+        try:
+            payload = json.loads(target.read_text(encoding="utf-8"))
+            if payload.get("version") != self.snapshot_version:
+                return False
+            files: dict[str, CodeFile] = {}
+            for item in payload.get("files", []):
+                symbols = tuple(
+                    CodeSymbol(
+                        name=str(symbol["name"]),
+                        kind=str(symbol["kind"]),
+                        path=str(symbol["path"]),
+                        line=int(symbol["line"]),
+                        end_line=int(symbol["end_line"]) if symbol.get("end_line") is not None else None,
+                        parent=str(symbol["parent"]) if symbol.get("parent") is not None else None,
+                    )
+                    for symbol in item.get("symbols", [])
+                )
+                code_file = CodeFile(
+                    path=str(item["path"]),
+                    imports=tuple(str(value) for value in item.get("imports", [])),
+                    symbols=symbols,
+                )
+                files[code_file.path] = code_file
+            self.files = files
+            return True
+        except (OSError, ValueError, TypeError, KeyError):
+            self.files.clear()
+            return False
