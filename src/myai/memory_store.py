@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from dataclasses import asdict
 from pathlib import Path
 
 from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
@@ -14,6 +13,8 @@ class CognitiveMemoryStore:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._persisted_memory_count = 0
+        self._persisted_belief_count = 0
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
@@ -51,47 +52,61 @@ class CognitiveMemoryStore:
                 "CREATE INDEX IF NOT EXISTS idx_memories_kind_score ON memories(kind, importance, confidence)"
             )
 
+    @staticmethod
+    def _memory_params(memory: MemoryItem) -> tuple[object, ...]:
+        return (
+            memory.content,
+            memory.kind.value,
+            memory.importance,
+            memory.confidence,
+            json.dumps(memory.provenance),
+            json.dumps(memory.tags),
+            memory.created_at,
+        )
+
+    @staticmethod
+    def _belief_params(belief: Belief) -> tuple[object, ...]:
+        return (
+            belief.statement,
+            belief.confidence,
+            json.dumps(belief.provenance),
+            belief.updated_at,
+        )
+
     def remember(self, memory: MemoryItem) -> None:
         with self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO memories(content, kind, importance, confidence, provenance, tags, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(content, kind) DO UPDATE SET
-                    importance=max(memories.importance, excluded.importance),
-                    confidence=max(memories.confidence, excluded.confidence),
-                    provenance=excluded.provenance,
-                    tags=excluded.tags
-                """,
-                (
-                    memory.content,
-                    memory.kind.value,
-                    memory.importance,
-                    memory.confidence,
-                    json.dumps(memory.provenance),
-                    json.dumps(memory.tags),
-                    memory.created_at,
-                ),
-            )
+            self._remember_memory(connection, memory)
+
+    def _remember_memory(self, connection: sqlite3.Connection, memory: MemoryItem) -> None:
+        connection.execute(
+            """
+            INSERT INTO memories(content, kind, importance, confidence, provenance, tags, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(content, kind) DO UPDATE SET
+                importance=max(memories.importance, excluded.importance),
+                confidence=max(memories.confidence, excluded.confidence),
+                provenance=excluded.provenance,
+                tags=excluded.tags
+            """,
+            self._memory_params(memory),
+        )
 
     def remember_belief(self, belief: Belief) -> None:
         with self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO beliefs(statement, confidence, provenance, updated_at)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(statement) DO UPDATE SET
-                    confidence=excluded.confidence,
-                    provenance=excluded.provenance,
-                    updated_at=excluded.updated_at
-                """,
-                (
-                    belief.statement,
-                    belief.confidence,
-                    json.dumps(belief.provenance),
-                    belief.updated_at,
-                ),
-            )
+            self._remember_belief(connection, belief)
+
+    def _remember_belief(self, connection: sqlite3.Connection, belief: Belief) -> None:
+        connection.execute(
+            """
+            INSERT INTO beliefs(statement, confidence, provenance, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(statement) DO UPDATE SET
+                confidence=excluded.confidence,
+                provenance=excluded.provenance,
+                updated_at=excluded.updated_at
+            """,
+            self._belief_params(belief),
+        )
 
     def load_memories(self, limit: int = 100) -> tuple[MemoryItem, ...]:
         if limit <= 0:
@@ -145,10 +160,27 @@ class CognitiveMemoryStore:
     def hydrate(self, state: CognitiveState, limit: int = 100) -> CognitiveState:
         state.memories.extend(self.load_memories(limit))
         state.beliefs.extend(self.load_beliefs(limit))
+        self._persisted_memory_count = len(state.memories)
+        self._persisted_belief_count = len(state.beliefs)
         return state
 
     def persist_state(self, state: CognitiveState) -> None:
-        for memory in state.memories:
-            self.remember(memory)
-        for belief in state.beliefs:
-            self.remember_belief(belief)
+        """Persist only state items added since the previous successful persist."""
+        if len(state.memories) < self._persisted_memory_count:
+            self._persisted_memory_count = 0
+        if len(state.beliefs) < self._persisted_belief_count:
+            self._persisted_belief_count = 0
+
+        new_memories = state.memories[self._persisted_memory_count :]
+        new_beliefs = state.beliefs[self._persisted_belief_count :]
+        if not new_memories and not new_beliefs:
+            return
+
+        with self._connect() as connection:
+            for memory in new_memories:
+                self._remember_memory(connection, memory)
+            for belief in new_beliefs:
+                self._remember_belief(connection, belief)
+
+        self._persisted_memory_count = len(state.memories)
+        self._persisted_belief_count = len(state.beliefs)
