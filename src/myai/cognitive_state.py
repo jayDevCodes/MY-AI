@@ -109,7 +109,7 @@ class CognitiveState:
                 return base, item.created_at
             item_terms = self._terms(f"{item.content} {' '.join(item.tags)}")
             overlap = len(query_terms & item_terms) / max(1, len(query_terms))
-            return base * (1.0 + 1.5 * overlap), item.created_at
+            return base + 2.0 * overlap, item.created_at
 
         items.sort(key=score, reverse=True)
         return tuple(items[:limit])
