@@ -21,6 +21,7 @@ from .knowledge import (
 )
 from .memory_lifecycle import MemoryLifecycleConfig, MemoryLifecycleManager
 from .memory_store import CognitiveMemoryStore
+from .model_report import ModelReport, build_model_report
 from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .provider_pool import ModelEndpoint, TieredModelPool
 from .repository_twin import CausalRepositoryTwin, ImpactSlice, TwinEdge, TwinNode
@@ -75,6 +76,7 @@ __all__ = [
     "MemoryLifecycleConfig",
     "MemoryLifecycleManager",
     "ModelEndpoint",
+    "ModelReport",
     "MultiModelAgentRuntime",
     "ProgramEdge",
     "ProgramGraph",
@@ -104,6 +106,7 @@ __all__ = [
     "RepairMemoryRecord",
     "benchmark_cases",
     "build_cognitive_context",
+    "build_model_report",
     "chunk_text",
     "run_architecture_benchmark",
 ]
