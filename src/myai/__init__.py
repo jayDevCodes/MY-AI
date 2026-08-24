@@ -1,10 +1,11 @@
-"""MY-AI V9 public package."""
+"""MY-AI V9.1 public package."""
 
 from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
 from .capability_benchmark import BenchmarkCase, CapabilityBenchmark
 from .capability_ledger import CapabilityLedger, CapabilityScore, CapabilitySnapshot
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
+from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .engine import AIEngine as LegacyAIEngine
 from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord, StrategyScore
 from .graph_v9 import ProgramEdge, ProgramGraph, ProgramNode, ProgramSlice
@@ -19,7 +20,7 @@ from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .provider_pool import ModelEndpoint, TieredModelPool
 from .repository_twin import CausalRepositoryTwin, ImpactSlice, TwinEdge, TwinNode
 from .runtime_trace import RuntimeTraceGraph, TraceCausalLink, TraceEvent
-from .schemas import ChatRequest, ChatResponse
+from .schemas import ChatMessage, ChatRequest, ChatResponse
 from .self_healing import (
     CausalDiagnosis,
     CausalErrorEngine,
@@ -41,21 +42,26 @@ __all__ = [
     "AdaptiveModelRouter",
     "AgentRuntimeResult",
     "BenchmarkCase",
+    "Belief",
     "CapabilityBenchmark",
     "CapabilityLedger",
     "CapabilityScore",
     "CapabilitySnapshot",
+    "ChatMessage",
     "ChatRequest",
     "ChatResponse",
     "CodeFile",
     "CodeIntelligenceIndex",
     "CodeSymbol",
+    "CognitiveState",
     "Document",
     "ExecutionBudget",
     "EvolutionBenchmark",
     "EvolutionMemory",
     "EvolutionRecord",
     "InMemoryKnowledgeStore",
+    "MemoryItem",
+    "MemoryKind",
     "ModelEndpoint",
     "MultiModelAgentRuntime",
     "ProgramEdge",

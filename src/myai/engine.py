@@ -5,6 +5,7 @@ from .agent_graph import ExecutionBudget
 from .agent_runtime import MultiModelAgentRuntime
 from .code_intelligence import CodeIntelligenceIndex
 from .cognitive import CognitiveCore, CognitivePlan, VerificationResult
+from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .config import get_settings
 from .embeddings import (
     DeterministicEmbeddingModel,
@@ -29,6 +30,7 @@ class AIEngine:
         self.provider = get_provider()
         self.memory = ConversationMemory()
         self.cognitive = CognitiveCore()
+        self.cognitive_state = CognitiveState()
         self.router = AdaptiveModelRouter()
         self.model_pool = TieredModelPool(self.settings)
         self.agent_runtime = MultiModelAgentRuntime(
@@ -133,13 +135,42 @@ class AIEngine:
     def run_agent_task(self, request: ChatRequest, retrieved: Sequence[RetrievedChunk] = ()) -> str:
         plan = self.cognitive.plan(request.message, len(retrieved))
         context = self._build_context_messages(request.message, request.conversation, retrieved, plan)
-        return self.agent_runtime.run(request.message, plan.kind, context).artifact.output
+        return self.agent_runtime.run(
+            request.message,
+            plan.kind,
+            context,
+            state=self.cognitive_state,
+        ).artifact.output
 
     def generate(self, request: ChatRequest) -> ChatResponse:
         history = self._normalize_history(request.conversation)
         retrieved = self.retrieve(request.message)
         plan = self.cognitive.plan(request.message, len(retrieved))
         routing = self.route(request, len(retrieved))
+
+        self.cognitive_state.set_goal(request.message.strip(), subgoals=list(plan.steps))
+        self.cognitive_state.active_strategy = f"route:{routing.tier}:{plan.kind}"
+        self.cognitive_state.set_uncertainty(0.6 if plan.requires_verification else 0.25)
+        self.cognitive_state.observe(f"retrieved:{len(retrieved)}")
+        self.cognitive_state.add_belief(
+            Belief(
+                statement=f"Task classified as {plan.kind}",
+                confidence=max(0.0, min(1.0, 1.0 - self.cognitive_state.uncertainty)),
+                provenance=("cognitive-plan",),
+            )
+        )
+        for item in retrieved:
+            self.cognitive_state.add_memory(
+                MemoryItem(
+                    content=item.text,
+                    kind=MemoryKind.SEMANTIC,
+                    importance=max(0.0, min(1.0, item.score)),
+                    confidence=max(0.0, min(1.0, item.score)),
+                    provenance=(item.source,),
+                    tags=("retrieved", plan.kind),
+                )
+            )
+
         mode = self.settings.agent_mode.lower()
         use_agents = mode == "always" or (mode == "auto" and plan.kind in {"research", "reasoning", "coding"})
 
@@ -151,6 +182,10 @@ class AIEngine:
         verification = VerificationResult(passed=True, score=1.0, issues=())
         if self.settings.cognitive_verification:
             verification = self.cognitive.verify(text, len(retrieved))
+            self.cognitive_state.set_uncertainty(max(0.0, min(1.0, 1.0 - verification.score)))
+            self.cognitive_state.observe(
+                f"verification:{'passed' if verification.passed else 'failed'}:{verification.score:.2f}"
+            )
             if not verification.passed and self.settings.cognitive_max_retries > 0:
                 retry_instruction = ChatMessage(
                     role="system",
@@ -167,12 +202,28 @@ class AIEngine:
                         plan,
                     )
                     retry_context.append(retry_instruction)
-                    text = self.agent_runtime.run(request.message, plan.kind, retry_context).artifact.output
+                    text = self.agent_runtime.run(
+                        request.message,
+                        plan.kind,
+                        retry_context,
+                        state=self.cognitive_state,
+                    ).artifact.output
                 else:
                     messages = self._build_messages(request.message, history, retrieved, plan, routing)
                     text = self.provider.generate([*messages, retry_instruction])
                 verification = self.cognitive.verify(text, len(retrieved))
+                self.cognitive_state.set_uncertainty(max(0.0, min(1.0, 1.0 - verification.score)))
 
+        self.cognitive_state.add_memory(
+            MemoryItem(
+                content=text,
+                kind=MemoryKind.EPISODIC,
+                importance=0.65,
+                confidence=max(0.0, min(1.0, verification.score)),
+                provenance=("generation",),
+                tags=(plan.kind, routing.tier),
+            )
+        )
         self.memory.extend(history)
         self.memory.add(ChatMessage(role="user", content=request.message.strip()))
         self.memory.add(ChatMessage(role="assistant", content=text))
@@ -191,6 +242,13 @@ class AIEngine:
         plan: CognitivePlan | None = None,
     ) -> list[ChatMessage]:
         messages = [ChatMessage(role="system", content=self.settings.system_prompt)]
+        if self.cognitive_state.summary():
+            messages.append(
+                ChatMessage(
+                    role="system",
+                    content=f"Shared cognitive state: {self.cognitive_state.summary()}",
+                )
+            )
         if plan is not None:
             messages.append(
                 ChatMessage(
@@ -244,6 +302,6 @@ class AIEngine:
                         f"Routing tier: {routing.tier}. {routing.reason}. "
                         f"Parallel work allowed: {routing.allow_parallel}."
                     ),
-                ),
+                )
             )
         return messages
