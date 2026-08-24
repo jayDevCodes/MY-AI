@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -57,22 +57,39 @@ class CapabilityLedger:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.snapshots: list[CapabilitySnapshot] = []
-        self._load()
+        self.load()
 
     @property
     def current(self) -> CapabilitySnapshot | None:
         return self.snapshots[-1] if self.snapshots else None
 
     def record(self, snapshot: CapabilitySnapshot) -> CapabilitySnapshot:
+        previous = self.current
+        if previous is not None:
+            snapshot = CapabilitySnapshot(
+                version=snapshot.version,
+                commit=snapshot.commit,
+                captured_at=snapshot.captured_at,
+                scores=snapshot.scores,
+                benchmark_count=snapshot.benchmark_count,
+                benchmark_passes=snapshot.benchmark_passes,
+                regression_count=len(self.regressions(snapshot, previous)),
+                notes=snapshot.notes,
+            )
+
         self.snapshots.append(snapshot)
         payload = {
             "schema_version": self.schema_version,
             "history": [asdict(item) for item in self.snapshots],
         }
-        self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         return snapshot
 
-    def delta(self, current: CapabilitySnapshot, previous: CapabilitySnapshot | None = None) -> dict[str, float]:
+    def delta(
+        self,
+        current: CapabilitySnapshot,
+        previous: CapabilitySnapshot | None = None,
+    ) -> dict[str, float]:
         baseline = previous or self.current
         if baseline is None:
             return {item.dimension: item.score for item in current.scores}
@@ -82,7 +99,11 @@ class CapabilityLedger:
             for item in current.scores
         }
 
-    def regressions(self, current: CapabilitySnapshot, previous: CapabilitySnapshot | None = None) -> tuple[str, ...]:
+    def regressions(
+        self,
+        current: CapabilitySnapshot,
+        previous: CapabilitySnapshot | None = None,
+    ) -> tuple[str, ...]:
         return tuple(
             dimension
             for dimension, change in self.delta(current, previous).items()
@@ -92,23 +113,42 @@ class CapabilityLedger:
     def baseline(self) -> dict[str, Any]:
         current = self.current
         if current is None:
-            return {"version": None, "commit": None, "scores": {}, "regressions": []}
+            return {
+                "version": None,
+                "commit": None,
+                "scores": {},
+                "regressions": [],
+            }
+
+        previous = self.snapshots[-2] if len(self.snapshots) > 1 else None
         return {
             "version": current.version,
             "commit": current.commit,
             "captured_at": current.captured_at,
             "scores": {item.dimension: item.score for item in current.scores},
-            "regressions": list(self.regressions(current, self.snapshots[-2] if len(self.snapshots) > 1 else None)),
+            "regressions": list(self.regressions(current, previous)),
             "benchmark_count": current.benchmark_count,
             "benchmark_passes": current.benchmark_passes,
+            "regression_count": current.regression_count,
         }
 
-    def _load(self) -> None:
+    def load(self) -> bool:
+        """Reload snapshots from disk without duplicating in-memory history."""
+        self.snapshots.clear()
         if not self.path.exists():
-            return
+            return False
+
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
-            for item in raw.get("history", []):
+            if raw.get("schema_version") != self.schema_version:
+                return False
+            history = raw.get("history", [])
+            if not isinstance(history, list):
+                return False
+
+            for item in history:
+                if not isinstance(item, dict):
+                    return False
                 scores = tuple(
                     CapabilityScore(
                         dimension=str(score["dimension"]),
@@ -131,8 +171,12 @@ class CapabilityLedger:
                         notes=tuple(str(value) for value in item.get("notes", [])),
                     )
                 )
+            return True
         except (OSError, ValueError, TypeError, KeyError):
             self.snapshots.clear()
+            return False
+
+    _load = load
 
 
 def now_iso() -> str:
