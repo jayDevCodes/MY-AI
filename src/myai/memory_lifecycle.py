@@ -44,12 +44,12 @@ class MemoryLifecycleManager:
         retained: list[MemoryItem] = []
         for kind, limit in limits.items():
             bucket = [item for item in items if item.kind == kind]
-            bucket.sort(key=lambda item: (item.importance * item.confidence, item.created_at), reverse=True)
+            bucket.sort(key=lambda item: (self.decay_score(item), item.created_at), reverse=True)
             retained.extend(bucket[: max(0, limit)])
         return tuple(retained)
 
     def consolidate(self, memories: Iterable[MemoryItem]) -> tuple[MemoryItem, ...]:
-        """Promote repeated, high-confidence episodes without destructive rewriting."""
+        """Promote repeated, consistently high-confidence episodes without rewriting evidence."""
         items = list(memories)
         groups: dict[str, list[MemoryItem]] = {}
         for item in items:
@@ -60,11 +60,10 @@ class MemoryLifecycleManager:
                 groups.setdefault(key, []).append(item)
 
         promotions: list[MemoryItem] = []
-        for key, episodes in groups.items():
+        for episodes in groups.values():
             if len(episodes) < self.config.promotion_min_recurrence:
                 continue
-            confidence = max(item.confidence for item in episodes)
-            if confidence < self.config.promotion_min_confidence:
+            if any(item.confidence < self.config.promotion_min_confidence for item in episodes):
                 continue
             newest = max(episodes, key=lambda item: item.created_at)
             promotion_kind = (
@@ -77,7 +76,7 @@ class MemoryLifecycleManager:
                     content=newest.content,
                     kind=promotion_kind,
                     importance=max(item.importance for item in episodes),
-                    confidence=confidence,
+                    confidence=min(item.confidence for item in episodes),
                     provenance=tuple(sorted({source for item in episodes for source in item.provenance})),
                     tags=tuple(sorted({tag for item in episodes for tag in item.tags} | {"consolidated", f"recurrence:{len(episodes)}"})),
                     created_at=newest.created_at,
