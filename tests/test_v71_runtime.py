@@ -53,17 +53,24 @@ def test_runtime_preserves_compact_artifact_handoff() -> None:
     assert all(child.findings for child in result.artifact.children)
 
 
-def test_code_index_snapshot_roundtrip(tmp_path: Path) -> None:
+def test_code_index_snapshot_roundtrip_and_invalidation(tmp_path: Path) -> None:
     source = tmp_path / "sample.py"
     source.write_text("def refresh_token():\n    return True\n", encoding="utf-8")
     snapshot = tmp_path / "index.json"
 
     original = CodeIntelligenceIndex()
     assert original.index_tree(tmp_path) == 1
-    original.save_snapshot(snapshot)
+    original.save_snapshot(snapshot, tmp_path)
 
     restored = CodeIntelligenceIndex()
-    assert restored.load_snapshot(snapshot) is True
+    assert restored.load_snapshot(snapshot, tmp_path) is True
     context = restored.context_map("refresh token")
     assert context
     assert context[0]["symbol"] == "refresh_token"
+
+    source.write_text("def refresh_token():\n    return 'NEW_TOKEN'\n", encoding="utf-8")
+    assert restored.load_snapshot(snapshot, tmp_path) is False
+    assert restored.refresh_if_stale(tmp_path) is True
+    refreshed = restored.read_context("refresh token")
+    assert refreshed
+    assert "NEW_TOKEN" in refreshed[0]["text"]
