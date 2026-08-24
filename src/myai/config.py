@@ -49,7 +49,13 @@ class Settings(BaseSettings):
     runtime_trace_path: str = "data/runtime_trace.jsonl"
     evolution_memory_path: str = "data/evolution_memory.jsonl"
     capability_ledger_path: str = "data/capability_ledger.json"
+    failure_signature_path: str = "data/failure_signatures.jsonl"
+    repair_episode_path: str = "data/repair_episodes.jsonl"
+    code_health_path: str = "data/code_health.json"
     evolution_min_promotion_delta: float = 0.05
+    self_healing_enabled: bool = True
+    self_healing_max_repair_attempts: int = 2
+    self_healing_reproduction_timeout_seconds: float = 30.0
     system_prompt: str = (
         "You are MY-AI V9.1. Operate as an evidence-first cognitive mesh. "
         "Use the unified program graph, runtime traces, repository memory, and structured specialist artifacts. "
