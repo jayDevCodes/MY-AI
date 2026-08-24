@@ -13,6 +13,8 @@ class CognitiveMemoryStore:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._persisted_memory_count = 0
+        self._persisted_belief_count = 0
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
@@ -142,7 +144,8 @@ class CognitiveMemoryStore:
                 FROM beliefs
                 ORDER BY confidence DESC, id DESC
                 LIMIT ?
-                """,
+                """
+                ,
                 (limit,),
             ).fetchall()
         return tuple(
@@ -158,12 +161,27 @@ class CognitiveMemoryStore:
     def hydrate(self, state: CognitiveState, limit: int = 100) -> CognitiveState:
         state.memories.extend(self.load_memories(limit))
         state.beliefs.extend(self.load_beliefs(limit))
+        self._persisted_memory_count = len(state.memories)
+        self._persisted_belief_count = len(state.beliefs)
         return state
 
     def persist_state(self, state: CognitiveState) -> None:
-        """Persist all state changes in one SQLite transaction for better throughput."""
+        """Persist only state items added since the previous successful persist."""
+        if len(state.memories) < self._persisted_memory_count:
+            self._persisted_memory_count = 0
+        if len(state.beliefs) < self._persisted_belief_count:
+            self._persisted_belief_count = 0
+
+        new_memories = state.memories[self._persisted_memory_count :]
+        new_beliefs = state.beliefs[self._persisted_belief_count :]
+        if not new_memories and not new_beliefs:
+            return
+
         with self._connect() as connection:
-            for memory in state.memories:
+            for memory in new_memories:
                 self._remember_memory(connection, memory)
-            for belief in state.beliefs:
+            for belief in new_beliefs:
                 self._remember_belief(connection, belief)
+
+        self._persisted_memory_count = len(state.memories)
+        self._persisted_belief_count = len(state.beliefs)
