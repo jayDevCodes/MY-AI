@@ -29,11 +29,14 @@ class AdaptiveModelRouter:
     """Budget-aware routing instead of permanently binding roles to one model."""
 
     def choose(self, request: RoutingRequest) -> RoutingDecision:
-        score = max(0.0, min(1.0, 0.5 * request.complexity + 0.35 * request.uncertainty))
+        score = max(
+            0.0,
+            min(1.0, 0.55 * request.complexity + 0.45 * request.uncertainty),
+        )
         if request.risk == "high":
             score = max(score, 0.9)
         if request.task_kind in {"research", "reasoning", "architecture", "code_review"}:
-            score = max(score, 0.7)
+            score = max(score, 0.75)
         if request.task_kind in {"formatting", "classification", "summarization"}:
             score = min(score, 0.4)
 
