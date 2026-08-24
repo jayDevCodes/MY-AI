@@ -4,6 +4,7 @@ from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArt
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
 from .capability_benchmark import BenchmarkCase, CapabilityBenchmark
 from .capability_ledger import CapabilityLedger, CapabilityScore, CapabilitySnapshot
+from .capability_runner import BenchmarkRun, benchmark_cases, run_architecture_benchmark
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
 from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
 from .context_contract import CognitiveContext, build_cognitive_context
@@ -45,6 +46,7 @@ __all__ = [
     "AdaptiveModelRouter",
     "AgentRuntimeResult",
     "BenchmarkCase",
+    "BenchmarkRun",
     "Belief",
     "CapabilityBenchmark",
     "CapabilityLedger",
@@ -97,6 +99,8 @@ __all__ = [
     "FailureFrame",
     "RepairMemory",
     "RepairMemoryRecord",
+    "benchmark_cases",
     "build_cognitive_context",
     "chunk_text",
+    "run_architecture_benchmark",
 ]
