@@ -6,6 +6,7 @@ from .capability_benchmark import BenchmarkCase, CapabilityBenchmark
 from .capability_ledger import CapabilityLedger, CapabilityScore, CapabilitySnapshot
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
 from .cognitive_state import Belief, CognitiveState, MemoryItem, MemoryKind
+from .context_contract import CognitiveContext, build_cognitive_context
 from .engine import AIEngine as LegacyAIEngine
 from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord, StrategyScore
 from .graph_v9 import ProgramEdge, ProgramGraph, ProgramNode, ProgramSlice
@@ -51,11 +52,12 @@ __all__ = [
     "ChatMessage",
     "ChatRequest",
     "ChatResponse",
+    "CognitiveContext",
+    "CognitiveMemoryStore",
+    "CognitiveState",
     "CodeFile",
     "CodeIntelligenceIndex",
     "CodeSymbol",
-    "CognitiveMemoryStore",
-    "CognitiveState",
     "Document",
     "ExecutionBudget",
     "EvolutionBenchmark",
@@ -92,5 +94,6 @@ __all__ = [
     "FailureFrame",
     "RepairMemory",
     "RepairMemoryRecord",
+    "build_cognitive_context",
     "chunk_text",
 ]
