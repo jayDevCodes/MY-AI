@@ -30,7 +30,7 @@ def test_program_graph_builds_calls_data_and_control(tmp_path: Path) -> None:
     assert result.source_context
 
 
-def test_runtime_trace_graph_persists_events(tmp_path: Path) -> None:
+def test_runtime_trace_graph_persists_events_and_links(tmp_path: Path) -> None:
     path = tmp_path / "trace.jsonl"
     graph = RuntimeTraceGraph(path)
     graph.add(TraceEvent("e1", "2026-01-01T00:00:00Z", "exception", "sample.py", 4, "main", "ValueError: bad"))
@@ -38,7 +38,7 @@ def test_runtime_trace_graph_persists_events(tmp_path: Path) -> None:
     graph.link("e2", "e1", "precedes")
     restored = RuntimeTraceGraph.load(path)
     assert restored.events["e1"].kind == "exception"
-    assert len(restored.neighborhood("e1")) == 1
+    assert len(restored.neighborhood("e1")) == 2
 
 
 def test_evolution_memory_ranks_strategies_and_gates_promotion(tmp_path: Path) -> None:
