@@ -7,7 +7,7 @@ from myai.schemas import ChatMessage, ChatRequest
 def test_fallback_provider_is_deterministic() -> None:
     provider = FallbackProvider()
     result = provider.generate([ChatMessage(role="user", content="hello")])
-    assert "MY-AI V5 fallback is active" in result
+    assert "MY-AI V6 fallback is active" in result
     assert "5 characters" in result
 
 
@@ -20,13 +20,13 @@ def test_memory_is_bounded() -> None:
     assert [item.content for item in memory.messages()] == ["two", "three"]
 
 
-def test_engine_returns_v5_response(monkeypatch) -> None:
+def test_engine_returns_v6_response(monkeypatch) -> None:
     monkeypatch.setenv("MYAI_EMBEDDING_PROVIDER", "deterministic")
     engine = AIEngine()
     response = engine.generate(ChatRequest(message="hello"))
 
-    assert response.version == "v5"
-    assert response.model == "placeholder-v5"
+    assert response.version == "v6"
+    assert response.model == "placeholder-v6"
     assert response.text
 
 
