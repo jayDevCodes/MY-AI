@@ -3,7 +3,7 @@
 from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
-from .engine import AIEngine
+from .engine import AIEngine as LegacyAIEngine
 from .knowledge import (
     Document,
     InMemoryKnowledgeStore,
@@ -25,8 +25,12 @@ from .self_healing import (
 )
 from .v8_engine import V8AIEngine
 
+# V8 becomes the default public engine while the legacy V7.1 engine remains importable.
+AIEngine = V8AIEngine
+
 __all__ = [
     "AIEngine",
+    "LegacyAIEngine",
     "V8AIEngine",
     "AdaptiveModelRouter",
     "AgentRuntimeResult",
