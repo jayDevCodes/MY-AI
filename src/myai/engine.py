@@ -43,7 +43,9 @@ class AIEngine:
         )
         self.knowledge = self._build_knowledge_store()
         self.code_index = CodeIntelligenceIndex()
-        self._code_index_ready = False
+        self._code_index_ready = self.code_index.load_snapshot(
+            self.settings.code_index_snapshot_path
+        )
 
     def _build_knowledge_store(self) -> KnowledgeStore:
         if self.settings.embedding_provider.lower() == "deterministic":
@@ -68,17 +70,33 @@ class AIEngine:
             top_k=top_k if top_k is not None else self.settings.knowledge_top_k,
         )
 
+    def refresh_code_index(self) -> int:
+        """Rebuild and persist the project symbol graph after source changes."""
+        self.code_index = CodeIntelligenceIndex()
+        count = self.code_index.index_tree(self.settings.code_index_root)
+        self.code_index.save_snapshot(self.settings.code_index_snapshot_path)
+        return count
+
     def code_context(self, query: str, *, limit: int | None = None) -> tuple[dict[str, object], ...]:
         """Return only relevant symbols instead of repeatedly loading the whole repository."""
         if not self.settings.code_index_enabled:
             return ()
         if not self._code_index_ready:
-            self.code_index.index_tree(self.settings.code_index_root)
-            self._code_index_ready = True
+            self._code_index_ready = self.code_index.load_snapshot(
+                self.settings.code_index_snapshot_path
+            )
+            if not self._code_index_ready:
+                self.refresh_code_index()
+                self._code_index_ready = True
         return self.code_index.context_map(
             query,
             limit=limit if limit is not None else self.settings.code_context_limit,
         )
+
+    def code_source_context(self, query: str, *, limit: int = 5) -> tuple[dict[str, object], ...]:
+        if not self.code_context(query, limit=limit):
+            return ()
+        return self.code_index.read_context(query, limit=limit)
 
     def route(self, request: ChatRequest, retrieved_count: int = 0) -> RoutingDecision:
         plan = self.cognitive.plan(request.message, retrieved_count)
