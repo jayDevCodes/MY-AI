@@ -24,9 +24,9 @@ class CodeFile:
 
 
 class CodeIntelligenceIndex:
-    """Persistent lightweight AST/symbol graph for narrow code-context retrieval."""
+    """Persistent lightweight AST/symbol graph with freshness-aware snapshots."""
 
-    snapshot_version = 1
+    snapshot_version = 2
 
     def __init__(self) -> None:
         self.files: dict[str, CodeFile] = {}
@@ -75,18 +75,47 @@ class CodeIntelligenceIndex:
         self.files[str(file_path)] = code_file
         return code_file
 
-    def index_tree(self, root: str | Path) -> int:
+    def _candidate_paths(self, root: str | Path) -> set[str]:
         root_path = Path(root)
+        return {
+            str(path)
+            for path in root_path.rglob("*.py")
+            if not any(part in {".git", ".venv", "venv", "__pycache__"} for part in path.parts)
+        }
+
+    @staticmethod
+    def _stat_signature(path: str | Path) -> tuple[int, int] | None:
+        try:
+            stat = Path(path).stat()
+        except OSError:
+            return None
+        return stat.st_mtime_ns, stat.st_size
+
+    def index_tree(self, root: str | Path) -> int:
         count = 0
-        for path in root_path.rglob("*.py"):
-            if any(part in {".git", ".venv", "venv", "__pycache__"} for part in path.parts):
-                continue
+        for path in self._candidate_paths(root):
             try:
                 self.index_file(path)
                 count += 1
             except (OSError, SyntaxError, UnicodeDecodeError):
                 continue
         return count
+
+    def refresh_if_stale(self, root: str | Path) -> bool:
+        """Rebuild only when source inventory/stat signatures differ from the snapshot."""
+        current_paths = self._candidate_paths(root)
+        current_signatures = {
+            path: self._stat_signature(path) for path in current_paths
+        }
+        snapshot_signatures = getattr(self, "_snapshot_signatures", {})
+        stale = set(snapshot_signatures) != current_paths
+        if not stale:
+            stale = any(snapshot_signatures[path] != current_signatures[path] for path in current_paths)
+        if stale:
+            self.files.clear()
+            self.index_tree(root)
+            return True
+        return False
 
     def search(self, query: str, limit: int = 20) -> tuple[CodeSymbol, ...]:
         terms = [term.casefold() for term in query.split() if term.strip()]
@@ -139,8 +168,14 @@ class CodeIntelligenceIndex:
     def save_snapshot(self, path: str | Path) -> None:
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
+        signatures = {
+            file_path: self._stat_signature(file_path)
+            for file_path in self.files
+            if self._stat_signature(file_path) is not None
+        }
         payload = {
             "version": self.snapshot_version,
+            "signatures": signatures,
             "files": [
                 {
                     "path": code_file.path,
@@ -161,6 +196,7 @@ class CodeIntelligenceIndex:
             ],
         }
         target.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        self._snapshot_signatures = signatures
 
     def load_snapshot(self, path: str | Path) -> bool:
         target = Path(path)
@@ -170,6 +206,18 @@ class CodeIntelligenceIndex:
             payload = json.loads(target.read_text(encoding="utf-8"))
             if payload.get("version") != self.snapshot_version:
                 return False
+            signatures = {
+                str(key): tuple(value) if value is not None else None
+                for key, value in payload.get("signatures", {}).items()
+            }
+            # Validate only filesystem metadata; do not reread source just to decide freshness.
+            for file_path, signature in signatures.items():
+                if self._stat_signature(file_path) != signature:
+                    return False
+            current_paths = set(self._candidate_paths(Path(".")))
+            if current_paths and current_paths != set(signatures):
+                return False
+
             files: dict[str, CodeFile] = {}
             for item in payload.get("files", []):
                 symbols = tuple(
@@ -190,6 +238,7 @@ class CodeIntelligenceIndex:
                 )
                 files[code_file.path] = code_file
             self.files = files
+            self._snapshot_signatures = signatures
             return True
         except (OSError, ValueError, TypeError, KeyError):
             self.files.clear()
