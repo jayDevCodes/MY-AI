@@ -1,9 +1,11 @@
-"""MY-AI V8 public package."""
+"""MY-AI V9 public package."""
 
 from .agent_graph import ExecutionBudget, RecursiveAgentGraph, TaskNode, WorkArtifact
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
 from .code_intelligence import CodeFile, CodeIntelligenceIndex, CodeSymbol
 from .engine import AIEngine as LegacyAIEngine
+from .evolution import EvolutionBenchmark, EvolutionMemory, EvolutionRecord, StrategyScore
+from .graph_v9 import ProgramEdge, ProgramGraph, ProgramNode, ProgramSlice
 from .knowledge import (
     Document,
     InMemoryKnowledgeStore,
@@ -14,6 +16,7 @@ from .knowledge import (
 from .model_router import AdaptiveModelRouter, RoutingDecision, RoutingRequest
 from .provider_pool import ModelEndpoint, TieredModelPool
 from .repository_twin import CausalRepositoryTwin, ImpactSlice, TwinEdge, TwinNode
+from .runtime_trace import RuntimeTraceGraph, TraceCausalLink, TraceEvent
 from .schemas import ChatRequest, ChatResponse
 from .self_healing import (
     CausalDiagnosis,
@@ -24,14 +27,15 @@ from .self_healing import (
     RepairMemoryRecord,
 )
 from .v8_engine import V8AIEngine
+from .v9_engine import V9AIEngine
 
-# V8 becomes the default public engine while the legacy V7.1 engine remains importable.
-AIEngine = V8AIEngine
+AIEngine = V9AIEngine
 
 __all__ = [
     "AIEngine",
-    "LegacyAIEngine",
+    "V9AIEngine",
     "V8AIEngine",
+    "LegacyAIEngine",
     "AdaptiveModelRouter",
     "AgentRuntimeResult",
     "ChatRequest",
@@ -41,16 +45,27 @@ __all__ = [
     "CodeSymbol",
     "Document",
     "ExecutionBudget",
+    "EvolutionBenchmark",
+    "EvolutionMemory",
+    "EvolutionRecord",
     "InMemoryKnowledgeStore",
     "ModelEndpoint",
     "MultiModelAgentRuntime",
+    "ProgramEdge",
+    "ProgramGraph",
+    "ProgramNode",
+    "ProgramSlice",
     "RecursiveAgentGraph",
     "RetrievedChunk",
     "RoutingDecision",
     "RoutingRequest",
     "SQLiteVectorStore",
+    "StrategyScore",
     "TaskNode",
     "TieredModelPool",
+    "TraceCausalLink",
+    "TraceEvent",
+    "RuntimeTraceGraph",
     "WorkArtifact",
     "CausalRepositoryTwin",
     "ImpactSlice",
