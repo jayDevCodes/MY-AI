@@ -1,22 +1,66 @@
 # MY-AI
 
-## V6 — Cognitive Core
+## V7.1 — Recursive Multi-Model Agent System
 
-MY-AI V6 keeps the V5 semantic retrieval and persistent local knowledge foundation and adds a model-agnostic cognitive layer around generation.
+MY-AI V7.1 keeps the V5 semantic retrieval/persistent-memory foundation and V6 cognitive verification, then makes the V7 architecture executable across multiple model tiers.
 
-### Cognitive pipeline
+### V7.1 architecture
 
 ```text
 request
-  -> classify
-  -> retrieve (when useful)
-  -> generate
-  -> verify
-  -> bounded retry when verification fails
-  -> persist conversation memory
+  -> cognitive classification
+  -> adaptive tier selection
+  -> recursive task graph
+       -> specialist workers on fast/balanced/frontier models
+       -> compact WorkArtifacts
+       -> independent frontier judge
+       -> retry only failed branch
+  -> final verification
+  -> persistent memory
 ```
 
-The cognitive layer currently provides deterministic task classification for chat, reasoning, coding, research, and memory-oriented requests; execution planning; and lightweight answer verification. It does not pretend that a tool was used when no retrieval/tool result exists.
+The runtime supports three separately configurable model tiers. Each tier can point to its own OpenAI-compatible endpoint/model, so a planner, specialist, critic, and judge can run on different models instead of pretending that one model did every job.
+
+### Context engineering
+
+Agents exchange structured artifacts instead of replaying their full conversation or repository context:
+
+```text
+WorkArtifact
+  task_id
+  role
+  output
+  confidence
+  findings
+  evidence
+  open_questions
+  children
+```
+
+This keeps detailed exploration local to the worker and sends only distilled work to the next stage.
+
+### Recursive execution guarantees
+
+Execution is bounded by maximum depth, node count, parallel workers, and retries. Cycles are detected. When a judge rejects a result, only that node is retried with judge feedback rather than restarting the whole graph.
+
+### Code Intelligence and persistence
+
+`CodeIntelligenceIndex` builds a lightweight Python AST/symbol graph, persists it to `data/code_index.json`, and can later retrieve only relevant symbols and source ranges. This means a new session can reuse the project map without rebuilding the entire conceptual view from scratch.
+
+```text
+repository
+  -> AST
+  -> symbols + imports
+  -> persistent code graph
+  -> narrow source context
+  -> coding specialist
+```
+
+### Real model configuration
+
+Set `MYAI_FAST_MODEL_PROVIDER`, `MYAI_BALANCED_MODEL_PROVIDER`, and `MYAI_FRONTIER_MODEL_PROVIDER` to `compatible` and provide the endpoint/model/key for each tier. Local mode remains deterministic and does not require a network model.
+
+`MYAI_AGENT_MODE=auto` uses the recursive runtime for reasoning, research, and coding tasks; use `always` to force agent execution for every request.
 
 ### Local setup
 
@@ -37,11 +81,4 @@ For CI and deterministic tests, set `MYAI_EMBEDDING_PROVIDER=deterministic` to a
 
 ### Knowledge database
 
-Knowledge is persisted in `data/knowledge.sqlite3` by default. The `data/` directory is intentionally ignored by Git because it is runtime state, not source code.
-
-### V6 runtime controls
-
-- `MYAI_COGNITIVE_VERIFICATION=true|false` enables the verification stage.
-- `MYAI_COGNITIVE_MAX_RETRIES=1` bounds automatic regeneration after a failed verification.
-
-The model provider remains pluggable through the existing provider interface, so V6 can wrap local or OpenAI-compatible model servers without coupling the cognitive layer to one vendor.
+Knowledge is persisted in `data/knowledge.sqlite3` by default. The `data/` directory is intentionally ignored by Git because it is runtime state.
