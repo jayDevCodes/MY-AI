@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from .agent_runtime import AgentRuntimeResult, MultiModelAgentRuntime
-from .schemas import ChatMessage
 from .model_router import RoutingRequest
+from .schemas import ChatMessage
 from .v9_engine import V9AIEngine
 
 
@@ -70,6 +70,7 @@ class V10AIEngine(V9AIEngine):
             self.model_pool,
             self.router,
             policy.execution_budget(base=self.agent_runtime.budget),
+            worker_tier_override=policy.preferred_tier,
         )
         result = runtime.run(
             objective=(
