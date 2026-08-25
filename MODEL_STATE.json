@@ -1,55 +1,56 @@
 {
-  "schema_version": 5,
-  "model_version": "v10-cognitive-compute-report",
+  "schema_version": 6,
+  "model_version": "v10.0-self-healing-runtime",
   "purpose": "Canonical architecture and measurement baseline for evidence-driven MY-AI upgrades.",
   "reporting": {
     "entrypoint": "myai.build_model_report / AIEngine.model_report",
-    "source_of_truth": ["live engine feature presence", "CapabilityLedger", "CapabilityBenchmark cases", "EvolutionMemory strategy scores", "CognitiveComputeController policies"],
+    "source_of_truth": ["live engine feature presence", "CapabilityLedger", "CapabilityBenchmark cases", "EvolutionMemory strategy scores", "CognitiveComputeController policies", "SelfHealingRuntime episodes", "CodeHealthStore"],
     "manual_capability_scores": false,
     "numeric_claim_rule": "Numeric capability claims require executable evidence; architecture presence alone is not a score."
   },
   "architecture": {
-    "core": "recursive multi-model cognitive mesh with bounded cognitive context, persistent evidence-gated memory, capability-aware compute allocation, and self-derived reporting",
+    "core": "recursive multi-model cognitive mesh with bounded cognitive context, persistent evidence-gated memory, capability-aware compute allocation, causal repository intelligence, and bounded self-healing runtime",
     "model_routing": ["fast", "balanced", "frontier"],
-    "compute_control": ["capability-gap pressure", "uncertainty pressure", "risk pressure", "historical strategy reliability", "bounded execution budgets"],
-    "repository_representation": ["persistent symbol graph", "repository twin", "program graph", "call edges", "data-flow references", "control-flow edges"],
-    "runtime_evidence": ["persistent trace events", "causal links", "failure neighborhoods"],
-    "memory": ["semantic knowledge", "typed cognitive memory", "persistent cognitive memory", "evidence-gated lifecycle", "repair memory", "evolution memory", "capability ledger"],
-    "verification": ["specialist workers", "frontier judge", "targeted validation", "promotion gates", "deterministic capability checks"],
-    "self_improvement": ["strategy scoring", "verified strategy feedback", "baseline comparison", "capability deltas", "regression detection", "executable architecture benchmarks", "compute-policy adaptation"]
+    "compute_control": ["capability-gap pressure", "uncertainty pressure", "risk pressure", "historical strategy reliability", "bounded execution budgets", "repair-specific tier enforcement"],
+    "repository_representation": ["persistent symbol graph", "repository twin", "program graph", "call edges", "data-flow references", "control-flow edges", "causal impact slices"],
+    "runtime_evidence": ["persistent trace events", "causal links", "failure neighborhoods", "failure signatures", "repair episodes"],
+    "memory": ["semantic knowledge", "typed cognitive memory", "persistent cognitive memory", "evidence-gated lifecycle", "repair memory", "evolution memory", "capability ledger", "failure signature memory"],
+    "self_healing": ["failure detection", "causal diagnosis", "bounded reproduction", "policy-governed recursive repair workers", "independent frontier judge", "fault injection", "stable-code health", "validation-gated promotion"],
+    "verification": ["specialist workers", "frontier judge", "targeted validation", "promotion gates", "deterministic capability checks", "fault recovery verification"],
+    "self_improvement": ["strategy scoring", "verified strategy feedback", "baseline comparison", "capability deltas", "regression detection", "executable architecture benchmarks", "compute-policy adaptation", "repair lessons"]
   },
   "capability_dimensions": {
     "reasoning": {"status": "architecture_benchmarked", "score_source": "executable architecture evidence"},
     "coding": {"status": "architecture_benchmarked_via_code_localization", "score_source": "executable repository evidence"},
     "repository_understanding": {"status": "architecture_benchmarked", "score_source": "program/repository twin evidence"},
-    "debugging": {"status": "architecture_benchmarked", "score_source": "impact/dependency evidence"},
+    "debugging": {"status": "architecture_benchmarked_with_causal_trace", "score_source": "impact/dependency + runtime trace evidence"},
     "memory": {"status": "architecture_benchmarked", "score_source": "typed lifecycle + bounded retrieval evidence"},
     "tool_use": {"status": "multi_model_provider_layer_unmeasured", "score": null},
     "planning": {"status": "architecture_benchmarked", "score_source": "cognitive planning + bounded graph evidence"},
     "verification": {"status": "architecture_benchmarked", "score_source": "deterministic cognitive verification evidence"},
-    "efficiency": {"status": "architecture_benchmarked", "score_source": "bounded-context evidence"},
+    "efficiency": {"status": "architecture_benchmarked", "score_source": "bounded-context + stable-code health evidence"},
     "self_improvement": {"status": "architecture_benchmarked", "score_source": "evidence-gated strategy promotion"}
   },
   "evidence_runner": {
     "entrypoint": "myai.run_architecture_benchmark",
     "mode": "deterministic",
     "requires_provider_model": false,
-    "measured_cases": ["frontier-routing", "recursive-agent-graph", "cross-episode-repair-memory", "trace-verification", "program-graph-localization", "causal-trace-diagnosis", "targeted-context", "strategy-promotion"],
-    "unmeasured_provider_capabilities": ["tool_use"],
+    "measured_cases": ["frontier-routing", "recursive-agent-graph", "cross-episode-repair-memory", "trace-verification", "program-graph-localization", "causal-trace-diagnosis", "targeted-context", "strategy-promotion", "self-healing-runtime", "fault-injection-recovery", "stable-code-inspection"],
+    "unmeasured_provider_capabilities": ["tool_use", "provider-backed task quality"],
     "principle": "Executed evidence, not architecture presence, is required for numeric capability claims."
   },
   "compute_policy": {
     "entrypoint": "myai.CognitiveComputeController",
     "inputs": ["capability ledger gap", "task uncertainty", "task risk", "historical strategy reliability", "routing decision"],
     "outputs": ["reasoning depth", "parallelism", "retry budget", "verification passes", "preferred tier"],
-    "constraints": ["bounded depth", "bounded parallelism", "bounded retries", "never overrides provider-independent evidence requirements"],
+    "constraints": ["bounded depth", "bounded parallelism", "bounded retries", "repair worker tier is enforced while independent judges remain frontier", "never overrides provider-independent evidence requirements"],
     "principle": "Use more compute when measured capability gaps or uncertainty justify it; avoid redundant exploration when verified strategies are reliable."
   },
   "benchmark_protocol": {
     "required_before_claiming_improvement": ["fixed task set", "same model/provider configuration", "same tool budget where applicable", "multiple runs for reliability", "task success", "regression rate", "latency", "tokens/cost", "unnecessary context/code-read volume", "memory transfer across episodes", "persisted evidence for every numeric claim"],
-    "current_executable_suite": ["frontier-routing", "recursive-agent-graph", "cross-episode-repair-memory", "trace-verification", "program-graph-localization", "causal-trace-diagnosis", "targeted-context", "strategy-promotion"],
+    "current_executable_suite": ["frontier-routing", "recursive-agent-graph", "cross-episode-repair-memory", "trace-verification", "program-graph-localization", "causal-trace-diagnosis", "targeted-context", "strategy-promotion", "self-healing-runtime", "fault-injection-recovery", "stable-code-inspection"],
     "external_reference_directions": ["STATE-Bench", "EvoMemBench", "EvoAgentBench", "PAST-Bench"]
   },
-  "known_limits": ["The deterministic runner measures architecture capabilities, not frontier-model task quality.", "Tool-use capability remains unmeasured by the provider-independent runner.", "Fresh GitHub Actions execution is not guaranteed to be visible through the current integration at every commit.", "Program/data/control-flow coverage is strongest for Python and should be extended to other languages before broad repo claims.", "Compute policy is a bounded controller; it does not train model weights or guarantee task-level quality improvements.", "Self-evolution changes remain evidence-gated; automatic model-weight training is not implemented.", "Self-derived reporting summarizes live architecture state but does not replace independent benchmark evaluation."]
-  ,"next_upgrade_targets": ["provider-backed end-to-end benchmark harness", "real runtime instrumentation and automatic trace capture", "sandbox patch execution with automatic rollback", "tool-use benchmark with explicit capability boundaries", "longitudinal benchmark runner with repeated runs and confidence intervals", "ability-transfer memory and curriculum generation", "model-vs-model and architecture-vs-architecture comparison harness", "predictive world-state and counterfactual simulation"]
+  "known_limits": ["The deterministic runner measures architecture capabilities, not frontier-model task quality.", "Tool-use capability remains unmeasured by the provider-independent runner.", "Fresh GitHub Actions execution is not guaranteed to be visible through the current integration at every commit.", "Program/data/control-flow coverage is strongest for Python and should be extended to other languages before broad repo claims.", "Compute policy is a bounded controller; it does not train model weights or guarantee task-level quality improvements.", "Self-evolution changes remain evidence-gated; automatic model-weight training is not implemented.", "Self-healing generates and validates repair episodes but production patch promotion remains an external gated step.", "Self-derived reporting summarizes live architecture state but does not replace independent benchmark evaluation."],
+  "next_upgrade_targets": ["provider-backed end-to-end benchmark harness", "real runtime instrumentation and automatic trace capture", "sandbox patch execution with automatic rollback", "tool-use benchmark with explicit capability boundaries", "longitudinal benchmark runner with repeated runs and confidence intervals", "ability-transfer memory and curriculum generation", "model-vs-model and architecture-vs-architecture comparison harness", "predictive world-state and counterfactual simulation"]
 }
