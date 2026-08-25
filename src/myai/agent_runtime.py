@@ -20,10 +20,17 @@ class AgentRuntimeResult:
 class MultiModelAgentRuntime:
     """Connect the recursive graph to real tier-specific model endpoints."""
 
-    def __init__(self, pool: TieredModelPool, router: AdaptiveModelRouter, budget: ExecutionBudget) -> None:
+    def __init__(
+        self,
+        pool: TieredModelPool,
+        router: AdaptiveModelRouter,
+        budget: ExecutionBudget,
+        worker_tier_override: ModelTier | None = None,
+    ) -> None:
         self.pool = pool
         self.router = router
         self.budget = budget
+        self.worker_tier_override = worker_tier_override
         self._tiers: dict[str, ModelTier] = {}
 
     def run(
@@ -68,19 +75,23 @@ class MultiModelAgentRuntime:
         )
 
     def _choose_tier(self, node: TaskNode, context: Sequence[ChatMessage]) -> ModelTier:
-        decision = self.router.choose(
-            RoutingRequest(
-                task_kind=node.role,
-                complexity=0.85 if node.depth == 0 else 0.7,
-                uncertainty=0.75 if node.role in {"critic", "reviewer", "countercheck"} else 0.45,
-                context_size=sum(len(m.content) for m in context),
-                risk="high" if node.role in {"reviewer", "countercheck", "synthesis"} else "medium",
-                latency_sensitive=False,
-                quality_priority=node.role in {"critic", "reviewer", "synthesis"},
+        if self.worker_tier_override is not None and node.role not in {"critic", "reviewer", "countercheck", "synthesis"}:
+            tier = self.worker_tier_override
+        else:
+            decision = self.router.choose(
+                RoutingRequest(
+                    task_kind=node.role,
+                    complexity=0.85 if node.depth == 0 else 0.7,
+                    uncertainty=0.75 if node.role in {"critic", "reviewer", "countercheck"} else 0.45,
+                    context_size=sum(len(m.content) for m in context),
+                    risk="high" if node.role in {"reviewer", "countercheck", "synthesis"} else "medium",
+                    latency_sensitive=False,
+                    quality_priority=node.role in {"critic", "reviewer", "synthesis"},
+                )
             )
-        )
-        self._tiers[node.id] = decision.tier
-        return decision.tier
+            tier = decision.tier
+        self._tiers[node.id] = tier
+        return tier
 
     def _worker(
         self,
@@ -98,10 +109,9 @@ class MultiModelAgentRuntime:
         system = ChatMessage(
             role="system",
             content=(
-                "You are a specialist worker in MY-AI V9.1. Return only useful work for the "
-                "assigned role. Do not claim tools or evidence you did not receive. Preserve "
-                "uncertainty and disagreements. Use the shared cognitive state as context, not as "
-                "proof; distinguish beliefs from observations and avoid inventing missing facts."
+                "You are a specialist worker in MY-AI V10. Return only useful work for the assigned role. "
+                "Do not claim tools or evidence you did not receive. Preserve uncertainty and disagreements. "
+                "Use the shared cognitive state as context, not as proof; distinguish beliefs from observations and avoid inventing missing facts."
             ),
         )
         prompt = ChatMessage(
@@ -138,7 +148,7 @@ class MultiModelAgentRuntime:
             ChatMessage(
                 role="system",
                 content=(
-                    "You are an independent judge for MY-AI V9.1. Evaluate whether the worker output is "
+                    "You are an independent judge for MY-AI V10. Evaluate whether the worker output is "
                     "consistent, useful, evidence-aware and complete. Treat the cognitive state as "
                     "context rather than ground truth. Return JSON only: "
                     '{"passed":true|false,"confidence":0.0-1.0,"feedback":"..."}'
